@@ -38,8 +38,8 @@ class SqlGenerator:
         3. 日期范围应为年初到年末，例如2021年应为 '2021-01-01' 到 '2021-12-31'。
 
         示例1:
-        user_question: 基于该模板，请生成2020-2022年北京市怀柔区怀柔区板块的分析报告
-        slide_params:{
+        user_question: 基于该模板，请生成2020-2022年北京市怀柔区怀柔区板块的分析报告.
+        slide_params:{{
         Table name: 2020-2022年良乡供应与成交套数及占比
         Table data:
         面积段	供应套数	成交套数	供求比	成交占比
@@ -56,9 +56,30 @@ class SqlGenerator:
         200-220㎡
         220-240㎡
         ≥240㎡
-        }
+        }}
         回答: SELECT supply_sets, trade_sets, dim_area FROM public.new_house WHERE city_name = '北京市' AND district_name = '怀柔区' AND block_name = '怀柔区' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
 
+        示例2:
+        user_question: 基于该模板，请生成2020-2022年北京市海淀区永丰板块的分析报告, 将面积段间隔设置为15㎡。
+        slide_params:{{
+        Table name: 2020-2022年永丰供应与成交趋势
+        Table data:
+        面积段	2020供应套数	2020成交套数	2021供应套数	2021成交套数	2022供应套数	2022成交套数
+        0-20㎡
+        20-40㎡
+        40-60㎡
+        60-80㎡
+        80-100㎡
+        100-120㎡
+        120-140㎡
+        140-160㎡
+        160-180㎡
+        180-200㎡
+        200-220㎡
+        220-240㎡
+        ≥240㎡
+        }}
+        回答: SELECT date_code, supply_sets, trade_sets, dim_area FROM public.new_house WHERE city_name = '北京市' AND district_name = '海淀区' AND block_name = '永丰' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
         """),
             ("human", "user_question:{user_question}  slide_params:{slide_params}")
         ])

@@ -54,9 +54,11 @@ class YamlProcessor:
 
         print(f"2. 解析PPT模板意图: {self.task.pptx_template_path.name}")
         parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
+        print(f"  -> 解析结果: {parsed_template_structure}")
 
         print("3. 根据用户需求与ppt解析生成SQL查询语句  ...")
         sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params=parsed_template_structure)
+        print(f"  -> 生成的SQL: {sql_query}")
 
         # print(f"1. 加载Ground Truth YAML: {self.task.ground_truth_yaml_path.name}")
         # ground_truth_data = load_yaml_file(self.task.ground_truth_yaml_path)
