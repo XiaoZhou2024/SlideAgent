@@ -14,15 +14,17 @@ def main():
     """
     # 从 .env 文件加载环境变量
     load_dotenv()
-    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    base_url = os.getenv("BASE_URL")
+    api_key = os.getenv("API_KEY")
+    model_name = os.getenv("MODEL_NAME")
 
-    if not deepseek_api_key:
-        print("错误: 未找到 DEEPSEEK_API_KEY 环境变量。")
-        print("请在项目根目录下创建一个 .env 文件，并添加 DEEPSEEK_API_KEY='your_key'。")
+    if not api_key and not base_url:
+        print("错误: 未找到 LLM 环境变量。")
+        print("请在项目根目录下创建一个 .env 文件，并添加 BASE_URL='your_url' API_KEY='your_key'。")
         return
 
     print("开始批量生成报告YAML配置...")
-    
+
     # 1. 查找所有包含任务的CSV文件
     csv_files = find_target_csv_files()
     if not csv_files:
@@ -32,7 +34,7 @@ def main():
 
     # 2. 初始化SQL生成器 (只需一次)
     try:
-        sql_generator = SqlGenerator(api_key=deepseek_api_key)
+        sql_generator = SqlGenerator(base_url=base_url, api_key=api_key, model_name=model_name)
     except ValueError as e:
         print(f"错误: 初始化SQL生成器失败: {e}")
         return
@@ -44,34 +46,34 @@ def main():
     for csv_path in csv_files:
         print(f"\n{'='*20} 正在处理CSV文件: {csv_path.parent}/{csv_path.name} {'='*20}")
         tasks = read_report_tasks_from_csv(csv_path)
-        
+
         if not tasks:
             print("此CSV文件中没有找到有效的任务。")
             continue
-            
+
         print(f"在此文件中找到 {len(tasks)} 个任务。")
 
         for task in tasks:
             try:
                 # 为每个任务创建一个处理器实例
                 processor = YamlProcessor(task, sql_generator)
-                
+
                 # 执行处理并生成最终的YAML数据
                 generated_data = processor.process_and_generate()
-                
-                # 保存到文件
-                processor.save_to_file(generated_data)
-                
-                success_count += 1
+
+            #     # 保存到文件
+            #     processor.save_to_file(generated_data)
+            #
+            #     success_count += 1
             except Exception as e:
                 print(f"❌ 处理任务时发生严重错误: {task.query[:50]}... | 错误: {e}")
                 error_count += 1
                 import traceback
                 traceback.print_exc()
-    
-    print(f"\n{'='*25} 批量处理完成！ {'='*25}")
-    print(f"✅ 成功生成: {success_count} 个YAML文件")
-    print(f"❌ 失败: {error_count} 个任务")
+    #
+    # print(f"\n{'='*25} 批量处理完成！ {'='*25}")
+    # print(f"✅ 成功生成: {success_count} 个YAML文件")
+    # print(f"❌ 失败: {error_count} 个任务")
 
 if __name__ == "__main__":
     main()

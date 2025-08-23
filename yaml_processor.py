@@ -48,28 +48,38 @@ class YamlProcessor:
         Returns:
             一个包含所有生成信息的字典。
         """
-        print(f"1. 加载Ground Truth YAML: {self.task.ground_truth_yaml_path.name}")
-        ground_truth_data = load_yaml_file(self.task.ground_truth_yaml_path)
-
-        print(f"2. 解析PPT模板: {self.task.pptx_template_path.name}")
-        parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
-        
-        print("3. 使用LLM生成 'data_source'...")
+        print("1. 解析用户意图生成 'data_source'...")
         new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
         print(f"  -> 生成的数据源: {new_data_source}")
 
-        print("4. 根据新数据生成 'output_slide' 部分...")
-        new_output_slide = self._generate_output_slide(ground_truth_data)
-        
-        # 4. 组装最终的YAML结构
-        generated_yaml = {
-            'query': self.task.query,
-            'data_source': new_data_source,  # 使用LLM生成的数据源
-            'template_slide': parsed_template_structure.get('template_slide'), # 使用解析出的结构
-            'output_slide': new_output_slide
-        }
+        print(f"2. 解析PPT模板意图: {self.task.pptx_template_path.name}")
+        parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
 
-        return generated_yaml
+        print("3. 根据用户需求与ppt解析生成SQL查询语句  ...")
+        sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params=parsed_template_structure)
+
+        # print(f"1. 加载Ground Truth YAML: {self.task.ground_truth_yaml_path.name}")
+        # ground_truth_data = load_yaml_file(self.task.ground_truth_yaml_path)
+        #
+        # print(f"2. 解析PPT模板: {self.task.pptx_template_path.name}")
+        # parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
+        #
+        # print("3. 使用LLM生成 'data_source'...")
+        # new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
+        # print(f"  -> 生成的数据源: {new_data_source}")
+        #
+        # print("4. 根据新数据生成 'output_slide' 部分...")
+        # new_output_slide = self._generate_output_slide(ground_truth_data)
+        #
+        # # 4. 组装最终的YAML结构
+        # generated_yaml = {
+        #     'query': self.task.query,
+        #     'data_source': new_data_source,  # 使用LLM生成的数据源
+        #     'template_slide': parsed_template_structure.get('template_slide'), # 使用解析出的结构
+        #     'output_slide': new_output_slide
+        # }
+        #
+        # return generated_yaml
 
     def save_to_file(self, data: Dict[str, Any]):
         """将生成的字典保存到YAML文件。"""
