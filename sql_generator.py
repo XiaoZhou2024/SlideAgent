@@ -40,44 +40,18 @@ class SqlGenerator:
         示例1:
         user_question: 基于该模板，请生成2020-2022年北京市怀柔区怀柔区板块的分析报告.
         slide_params:{{
-        Table name: 2020-2022年良乡供应与成交套数及占比
-        Table data:
-        面积段	供应套数	成交套数	供求比	成交占比
-        0-20㎡
-        20-40㎡
-        40-60㎡
-        60-80㎡
-        80-100㎡
-        100-120㎡
-        120-140㎡
-        140-160㎡
-        160-180㎡
-        180-200㎡
-        200-220㎡
-        220-240㎡
-        ≥240㎡
+            'table_name': '2020-2022年良乡供应与成交套数及占比', 
+            'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '200-220㎡', '220-240㎡', '240-260㎡', '260-280㎡', '280-300㎡', '≥300㎡', '总计'], 
+            'column_headers': ['供应套数', '成交套数', '供求比', '成交占比']
         }}
         回答: SELECT supply_sets, trade_sets, dim_area FROM public.new_house WHERE city_name = '北京市' AND district_name = '怀柔区' AND block_name = '怀柔区' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
 
         示例2:
         user_question: 基于该模板，请生成2020-2022年北京市海淀区永丰板块的分析报告, 将面积段间隔设置为15㎡。
         slide_params:{{
-        Table name: 2020-2022年永丰供应与成交趋势
-        Table data:
-        面积段	2020供应套数	2020成交套数	2021供应套数	2021成交套数	2022供应套数	2022成交套数
-        0-20㎡
-        20-40㎡
-        40-60㎡
-        60-80㎡
-        80-100㎡
-        100-120㎡
-        120-140㎡
-        140-160㎡
-        160-180㎡
-        180-200㎡
-        200-220㎡
-        220-240㎡
-        ≥240㎡
+            'table_name': '2020-2022年良乡供应与成交趋势', 
+            'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '200-220㎡', '220-240㎡', '240-260㎡', '260-280㎡', '280-300㎡', '≥300㎡'], 
+            'column_headers': ['2020供应套数', '2020成交套数', '2021供应套数', '2021成交套数', '2022供应套数', '2022成交套数']
         }}
         回答: SELECT date_code, supply_sets, trade_sets, dim_area FROM public.new_house WHERE city_name = '北京市' AND district_name = '海淀区' AND block_name = '永丰' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
         """),
@@ -148,15 +122,20 @@ class SqlGenerator:
             str: 生成的SQL查询语句。
         """
         chain = self.sql_prompt_template | self.model
-        response = chain.invoke({"user_question": user_question, "slide_params": slide_params})
+        slide_tables = slide_params['template_slide']['content_elements']
+        sql_list = []
+        for slide_table_params in slide_tables:
+            table_params = self.process_slide_params(slide_table_params)
+            response = chain.invoke({"user_question": user_question, "slide_params": table_params})
+
+            sql_query = response.content.strip()
+            if sql_query.startswith("```sql"):
+                sql_query = sql_query[6:]
+            if sql_query.endswith("```"):
+                sql_query = sql_query[:-3]
+            sql_list.append(sql_query.strip())
         
-        sql_query = response.content.strip()
-        if sql_query.startswith("```sql"):
-            sql_query = sql_query[6:]
-        if sql_query.endswith("```"):
-            sql_query = sql_query[:-3]
-        
-        return sql_query.strip()
+        return sql_list
 
     def generate_datasource_json(self, user_question: str) -> Dict[str, Any]:
         """
@@ -182,3 +161,21 @@ class SqlGenerator:
         except json.JSONDecodeError:
             print(f"错误: LLM返回的JSON格式无效: {json_string}")
             raise
+
+    def process_slide_params(self, slide_params: Dict[str, Any]):
+        """
+        这块代码暂时只实现了功能，后续会优化
+        """
+        title = slide_params['title']['content']
+        df = slide_params['data']
+        second_col_name = df.columns[0]
+        df2 = df.set_index(second_col_name)
+
+        #列标题（不包含作为索引的那列）
+        column_headers = list(df2.columns)
+
+        #行标题（来自第二列索引）
+        row_headers = list(df2.index)
+
+        table_params = {"table_name": title,"row_headers": row_headers,"column_headers": column_headers}
+        return table_params
