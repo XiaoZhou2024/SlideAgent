@@ -60,6 +60,10 @@ class YamlProcessor:
         sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params=parsed_template_structure)
         print(f"  -> 生成的SQL: {sql_query}")
 
+        print("4. 给定用户需求与ppt意图自动调用工具  ...")
+
+        print("5. 根据数据生成结论部分...")
+
         # print(f"1. 加载Ground Truth YAML: {self.task.ground_truth_yaml_path.name}")
         # ground_truth_data = load_yaml_file(self.task.ground_truth_yaml_path)
         #
