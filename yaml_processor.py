@@ -11,15 +11,18 @@ from database_manager import DatabaseManager
 from file_utils import ReportTask, load_yaml_file
 from pptx_parser import PptxParser
 from sql_generator import SqlGenerator
+from tools_selector import ToolSelector
+
 
 class YamlProcessor:
     """
     处理单个报告任务，整合信息并生成新的YAML文件。
     """
-    def __init__(self, task: ReportTask, sql_generator: SqlGenerator, database_manager: DatabaseManager):
+    def __init__(self, task: ReportTask, sql_generator: SqlGenerator, database_manager: DatabaseManager, tool_selector: ToolSelector):
         self.task = task
         self.sql_generator = sql_generator
         self.database_manager = database_manager
+        self.tool_selector = tool_selector
         self.pptx_parser = PptxParser(self.task.pptx_template_path)
 
     def _generate_output_slide(self, ground_truth_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -77,12 +80,10 @@ class YamlProcessor:
         data_path = self.create_timestamped_folder()
         self.database_manager.execute_query_save_data(sql_query, data_path)
 
-
-
-
-
-        # print("4. 给定用户需求与ppt意图自动调用工具  ...")
+        print("4. 给定用户需求与ppt意图自动调用工具  ...")
+        self.tool_selector.select_function_by_intent(data_source=new_data_source, slide_params=parsed_template_structure, data_path=data_path)
         #输入: 用户需求，ppt解析结构，数据源,文件输出路径
+
 
         # print("5. 根据数据生成结论部分...")
 

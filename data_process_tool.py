@@ -2,11 +2,11 @@ import re
 import numpy as np
 import pandas as pd
 
-def supply_and_sales_counts_and_share(csv_data_path, area_range_size: int=20):
+def supply_and_sales_counts_and_share(input_path: str, output_path: str, area_range_size: int=20):
     """
     供应与成交套数及占比
     """
-    data=pd.read_csv(csv_data_path)
+    data=pd.read_csv(input_path)
     block_df = data.copy()
     # 确定面积区间范围
     min_area = block_df['dim_area'].min()
@@ -53,15 +53,15 @@ def supply_and_sales_counts_and_share(csv_data_path, area_range_size: int=20):
     result = pd.concat([result, total_row], ignore_index=True)
 
     result = compact_area_table(result, keep_rows=15)
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         result.to_excel(writer, index=False)
 
 
-def analyze_supply_sales_trend(csv_data_path,  area_range_size: int=20):
+def analyze_supply_sales_trend(input_path: str, output_path: str, area_range_size: int=20):
     """
     供应与成交趋势
     """
-    data=pd.read_csv(csv_data_path)
+    data=pd.read_csv(input_path)
     # 日期标准化
     block_df = data.copy()
     block_df['date_code'] = pd.to_datetime(block_df['date_code'], errors='coerce')  # 处理 2021/11/26 这种格式
@@ -111,16 +111,16 @@ def analyze_supply_sales_trend(csv_data_path,  area_range_size: int=20):
         final_df.rename(columns={'index': '面积段'}, inplace=True)
 
     final_df = compact_area_table_1(final_df)
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         final_df.to_excel(writer, index=False)
     # return final_df
 
 
-def get_supply_sales_counts_stats(csv_data_path, area_range_size: int=20):
+def get_supply_sales_counts_stats(input_path: str, output_path: str, area_range_size: int=20):
     """
     供应与成交套数统计
     """
-    block_dataframe = pd.read_csv(csv_data_path)
+    block_dataframe = pd.read_csv(input_path)
     # 日期标准化
     block_df = block_dataframe.copy()
 
@@ -146,16 +146,16 @@ def get_supply_sales_counts_stats(csv_data_path, area_range_size: int=20):
     final_result = result
     final_result = compact_area_table_2(final_result, keep_rows=15)
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         final_result.to_excel(writer, index=False)
     # return final_df
 
-def compute_area_price_cross_stats(csv_data_path, area_range_size: int=20, price_range_size: int=100):
+def compute_area_price_cross_stats(input_path: str, output_path: str, area_range_size: int=20, price_range_size: int=100):
     """
     面积-总价交叉分析
     """
 
-    block_dataframe = pd.read_csv(csv_data_path)
+    block_dataframe = pd.read_csv(input_path)
     # 日期标准化
     block_df = block_dataframe.copy()
 
@@ -206,15 +206,15 @@ def compute_area_price_cross_stats(csv_data_path, area_range_size: int=20, price
 
     cross_tab = compact_merge_dataframe_ranges(cross_tab,14,16)
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         cross_tab.to_excel(writer, index=False)
 
-def compute_area_num_stats(csv_data_path, area_range_size: int=20):
+def compute_area_num_stats(input_path: str, output_path: str, area_range_size: int=20):
     """
     面积段房源数量统计
     """
 
-    block_dataframe = pd.read_csv(csv_data_path)
+    block_dataframe = pd.read_csv(input_path)
     # 日期标准化
     block_df = block_dataframe.copy()
 
@@ -243,15 +243,15 @@ def compute_area_num_stats(csv_data_path, area_range_size: int=20):
     area_count.columns = ['area_range', 'count']
     area_count = compact_merge_price_or_area_ranges(area_count)
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         area_count.to_excel(writer, index=False)
 
-def compute_price_num_stats(csv_data_path, price_range_size: int=100):
+def compute_price_num_stats(input_path: str, output_path: str, price_range_size: int=100):
     """
     价格段房源数量统计
     """
 
-    block_dataframe = pd.read_csv(csv_data_path)
+    block_dataframe = pd.read_csv(input_path)
     # 日期标准化
     block_df = block_dataframe.copy()
 
@@ -281,15 +281,15 @@ def compute_price_num_stats(csv_data_path, price_range_size: int=100):
     price_count = price_count.reset_index()
     price_count.columns = ['price_range', 'count']
     price_count = compact_merge_price_or_area_ranges(price_count)
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         price_count.to_excel(writer, index=False)
 
-def compute_market_capacity(csv_data_path):
+def compute_market_capacity(input_path: str, output_path: str):
     """
     商品住宅历年市场容量
     """
 
-    block_df = pd.read_csv(csv_data_path)
+    block_df = pd.read_csv(input_path)
     block_df['date_code'] = pd.to_datetime(block_df['date_code'])
     block_df['year'] = block_df['date_code'].dt.year
 
@@ -328,14 +328,14 @@ def compute_market_capacity(csv_data_path):
     # 替换所有NaN为0
     result = result.fillna(0)
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         result.to_excel(writer, index=False)
 
-def compute_annual_traded_units(csv_data_path):
+def compute_annual_traded_units(input_path: str, output_path: str):
     """
     商品住宅历年套数量
     """
-    block_df = pd.read_csv(csv_data_path)
+    block_df = pd.read_csv(input_path)
     block_df['date_code'] = pd.to_datetime(block_df['date_code'])
     block_df['year'] = block_df['date_code'].dt.year
 
@@ -374,14 +374,14 @@ def compute_annual_traded_units(csv_data_path):
     area_df = result[['year', '供应面积（万m2）', '成交面积（万m2）']]
     sets_df = result[['year', '供应套数', '成交套数']]
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         sets_df.to_excel(writer, index=False)
 
-def compute_annual_traded_area(csv_data_path):
+def compute_annual_traded_area(input_path: str, output_path: str):
     """
     商品住宅历年面积量
     """
-    block_df = pd.read_csv(csv_data_path)
+    block_df = pd.read_csv(input_path)
     block_df['date_code'] = pd.to_datetime(block_df['date_code'])
     block_df['year'] = block_df['date_code'].dt.year
 
@@ -419,14 +419,14 @@ def compute_annual_traded_area(csv_data_path):
     # --- 拆分成两个 DataFrame ---
     area_df = result[['year', '供应面积（万m2）', '成交面积（万m2）']]
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         area_df.to_excel(writer, index=False)
 
-def compute_resale_house_total_and_avg_price(csv_data_path):
+def compute_resale_house_total_and_avg_price(input_path: str, output_path: str):
     """
     二手房成交套数及均价统计
     """
-    block_df = pd.read_csv(csv_data_path)
+    block_df = pd.read_csv(input_path)
     block_df['date_code'] = pd.to_datetime(block_df['date_code'])
     block_df['year'] = block_df['date_code'].dt.year
 
@@ -452,16 +452,16 @@ def compute_resale_house_total_and_avg_price(csv_data_path):
     # 可选：填充缺失为0
     result_df = result.fillna(0).astype(int)
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         result_df.to_excel(writer, index=False)
 
 
 
-def compute_resale_house_transaction_count_distribution(csv_data_path):
+def compute_resale_house_transaction_count_distribution(input_path: str, output_path: str):
     """
     二手房成交套数分布
     """
-    block_df = pd.read_csv(csv_data_path)
+    block_df = pd.read_csv(input_path)
     block_df['date_code'] = pd.to_datetime(block_df['date_code'])
     block_df['year'] = block_df['date_code'].dt.year
 
@@ -484,15 +484,15 @@ def compute_resale_house_transaction_count_distribution(csv_data_path):
 
     # 可选：填充缺失为0
     result_df = result.fillna(0).astype(int)
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         result_df.to_excel(writer, index=False)
 
 
-def compute_resale_house_avg_price_distribution(csv_data_path):
+def compute_resale_house_avg_price_distribution(input_path: str, output_path: str):
     """
     二手房成交均价分布
     """
-    block_df = pd.read_csv(csv_data_path)
+    block_df = pd.read_csv(input_path)
     block_df['date_code'] = pd.to_datetime(block_df['date_code'])
     block_df['year'] = block_df['date_code'].dt.year
 
@@ -515,17 +515,17 @@ def compute_resale_house_avg_price_distribution(csv_data_path):
 
     # 可选：填充缺失为0
     result_df = result.fillna(0).astype(int)
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         result_df.to_excel(writer, index=False)
 
-def get_recent_transaction_trend(csv_data_path,
+def get_recent_transaction_trend(input_path: str, output_path: str,
                           project_name: str | None = None,
                           freq: str = 'M'   # 'M'：自然月；'Q'：季度
                          ):
     """
     小区房价走势
     """
-    df = pd.read_csv(csv_data_path)
+    df = pd.read_csv(input_path)
     # 1. 日期标准化
     df = df.copy()
     df['date_code'] = pd.to_datetime(df['date_code'], errors='coerce')  # 处理 2021/11/26 这种格式
@@ -555,7 +555,7 @@ def get_recent_transaction_trend(csv_data_path,
     avg_price = avg_price.fillna(0)
     result_df = avg_price.to_frame().reset_index()
 
-    with pd.ExcelWriter('./data/1.xlsx') as writer:
+    with pd.ExcelWriter(output_path) as writer:
         result_df.to_excel(writer, index=False)
 
 
