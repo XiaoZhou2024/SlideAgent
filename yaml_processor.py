@@ -1,10 +1,12 @@
 # yaml_processor.py
+from datetime import datetime
 
 import yaml
 import copy
 from pathlib import Path
 from typing import Dict, Any
 
+from database_manager import DatabaseManager
 # 从其他模块导入依赖
 from file_utils import ReportTask, load_yaml_file
 from pptx_parser import PptxParser
@@ -14,9 +16,10 @@ class YamlProcessor:
     """
     处理单个报告任务，整合信息并生成新的YAML文件。
     """
-    def __init__(self, task: ReportTask, sql_generator: SqlGenerator):
+    def __init__(self, task: ReportTask, sql_generator: SqlGenerator, database_manager: DatabaseManager):
         self.task = task
         self.sql_generator = sql_generator
+        self.database_manager = database_manager
         self.pptx_parser = PptxParser(self.task.pptx_template_path)
 
     def _generate_output_slide(self, ground_truth_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -41,6 +44,18 @@ class YamlProcessor:
         
         return output_slide
 
+    def create_timestamped_folder(self) -> Path:
+        """
+        根据当前时间创建目录并返回路径（Path 对象）。
+        - base: 根目录
+        - fmt: 时间格式（strftime）
+        """
+        base = Path("data")
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = base / stamp
+        path.mkdir(parents=True, exist_ok=True)
+        return path.resolve()
+
     def process_and_generate(self) -> Dict[str, Any]:
         """
         执行完整的处理流程，生成最终的YAML数据字典。
@@ -55,13 +70,20 @@ class YamlProcessor:
         print(f"2. 解析PPT模板意图: {self.task.pptx_template_path.name}")
         parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
 
-        print("3. 根据用户需求与ppt解析生成SQL查询语句  ...")
+        print("3. 根据用户需求与ppt解析生成SQL查询语句,接着检索数据存储到data目录  ...")
         '''sql_query的数据类型是list'''
         sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params=parsed_template_structure)
         print(f"  -> 生成的SQL: {sql_query}")
+        data_path = self.create_timestamped_folder()
+        self.database_manager.execute_query_save_data(sql_query, data_path)
+
+
+
+
 
         # print("4. 给定用户需求与ppt意图自动调用工具  ...")
-        #
+        #输入: 用户需求，ppt解析结构，数据源,文件输出路径
+
         # print("5. 根据数据生成结论部分...")
 
         # print(f"1. 加载Ground Truth YAML: {self.task.ground_truth_yaml_path.name}")

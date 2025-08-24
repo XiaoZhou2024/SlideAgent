@@ -3,9 +3,11 @@
 import os
 from dotenv import load_dotenv
 
+from database_manager import DatabaseManager
 # 从自定义模块中导入
 from file_utils import find_target_csv_files, read_report_tasks_from_csv
 from sql_generator import SqlGenerator
+# from tools_selector import ToolSelector
 from yaml_processor import YamlProcessor
 
 def main():
@@ -35,6 +37,9 @@ def main():
     # 2. 初始化SQL生成器 (只需一次)
     try:
         sql_generator = SqlGenerator(base_url=base_url, api_key=api_key, model_name=model_name)
+        # tool_selector = ToolSelector(base_url=base_url, api_key=api_key, model_name=model_name)
+        database_manager = DatabaseManager()
+
     except ValueError as e:
         print(f"错误: 初始化SQL生成器失败: {e}")
         return
@@ -56,7 +61,7 @@ def main():
         for task in tasks:
             try:
                 # 为每个任务创建一个处理器实例
-                processor = YamlProcessor(task, sql_generator)
+                processor = YamlProcessor(task, sql_generator, database_manager)
 
                 # 执行处理并生成最终的YAML数据
                 generated_data = processor.process_and_generate()

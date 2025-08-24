@@ -10,7 +10,7 @@ class SqlGenerator:
     """
     使用大语言模型根据用户问题生成SQL查询的类。
     """
-    def __init__(self, base_url: str, api_key: str, model_name: str = "deepseek-chat", temperature: float = 0):
+    def __init__(self, base_url: str, api_key: str, model_name: str, temperature: float = 0):
         """
         初始化SQL生成器。
 
@@ -111,7 +111,7 @@ class SqlGenerator:
             ("human", "{user_question}")
         ])
 
-    def generate_sql(self, user_question: str, slide_params: Dict[str, Any]) -> str:
+    def generate_sql(self, user_question: str, slide_params: Dict[str, Any]) -> list:
         """
         根据用户问题生成SQL查询。
 
