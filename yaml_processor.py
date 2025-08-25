@@ -6,6 +6,7 @@ import copy
 from pathlib import Path
 from typing import Dict, Any
 
+from conclusion_generator import ConclusionGenerator
 from database_manager import DatabaseManager
 # 从其他模块导入依赖
 from file_utils import ReportTask, load_yaml_file
@@ -18,11 +19,12 @@ class YamlProcessor:
     """
     处理单个报告任务，整合信息并生成新的YAML文件。
     """
-    def __init__(self, task: ReportTask, sql_generator: SqlGenerator, database_manager: DatabaseManager, tool_selector: ToolSelector):
+    def __init__(self, task: ReportTask, sql_generator: SqlGenerator, database_manager: DatabaseManager, tool_selector: ToolSelector, conclusion_generator: ConclusionGenerator):
         self.task = task
         self.sql_generator = sql_generator
         self.database_manager = database_manager
         self.tool_selector = tool_selector
+        self.conclusion_generator = conclusion_generator
         self.pptx_parser = PptxParser(self.task.pptx_template_path)
 
     def _generate_output_slide(self, ground_truth_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -81,24 +83,19 @@ class YamlProcessor:
         self.database_manager.execute_query_save_data(sql_query, data_path)
 
         print("4. 给定用户需求与ppt意图自动调用工具  ...")
-        self.tool_selector.select_function_by_intent(data_source=new_data_source, slide_params=parsed_template_structure, data_path=data_path)
-        #输入: 用户需求，ppt解析结构，数据源,文件输出路径
+        tool_call_params = self.tool_selector.select_function_by_intent(data_source=new_data_source, slide_params=parsed_template_structure, data_path=data_path)
 
+        print("5. 根据数据生成结论部分...")
+        conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_path=data_path)
+        print(f"  -> 生成的结论是: {conclusion}")
 
-        # print("5. 根据数据生成结论部分...")
+        # 6. 组装最终的测评YAML结构
+        eval_yaml = {
+            'sql_query': sql_query,
+            'tool_call_params': tool_call_params,
+            'conclusion': conclusion,
+        }
 
-        # print(f"1. 加载Ground Truth YAML: {self.task.ground_truth_yaml_path.name}")
-        # ground_truth_data = load_yaml_file(self.task.ground_truth_yaml_path)
-        #
-        # print(f"2. 解析PPT模板: {self.task.pptx_template_path.name}")
-        # parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
-        #
-        # print("3. 使用LLM生成 'data_source'...")
-        # new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
-        # print(f"  -> 生成的数据源: {new_data_source}")
-        #
-        # print("4. 根据新数据生成 'output_slide' 部分...")
-        # new_output_slide = self._generate_output_slide(ground_truth_data)
         #
         # # 4. 组装最终的YAML结构
         # generated_yaml = {
@@ -108,7 +105,7 @@ class YamlProcessor:
         #     'output_slide': new_output_slide
         # }
         #
-        # return generated_yaml
+        return eval_yaml
 
     def save_to_file(self, data: Dict[str, Any]):
         """将生成的字典保存到YAML文件。"""

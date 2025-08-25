@@ -3,6 +3,7 @@
 import os
 from dotenv import load_dotenv
 
+from conclusion_generator import ConclusionGenerator
 from database_manager import DatabaseManager
 # 从自定义模块中导入
 from file_utils import find_target_csv_files, read_report_tasks_from_csv
@@ -38,6 +39,7 @@ def main():
     try:
         sql_generator = SqlGenerator(base_url=base_url, api_key=api_key, model_name=model_name)
         tool_selector = ToolSelector(base_url=base_url, api_key=api_key, model_name=model_name)
+        conclusion_generator = ConclusionGenerator(base_url=base_url, api_key=api_key, model_name=model_name)
         database_manager = DatabaseManager()
 
     except ValueError as e:
@@ -61,15 +63,15 @@ def main():
         for task in tasks:
             try:
                 # 为每个任务创建一个处理器实例
-                processor = YamlProcessor(task, sql_generator, database_manager, tool_selector)
+                processor = YamlProcessor(task, sql_generator, database_manager, tool_selector, conclusion_generator)
 
                 # 执行处理并生成最终的YAML数据
                 generated_data = processor.process_and_generate()
 
-            #     # 保存到文件
-            #     processor.save_to_file(generated_data)
-            #
-            #     success_count += 1
+                # 保存到文件
+                processor.save_to_file(generated_data)
+
+                success_count += 1
             except Exception as e:
                 print(f"❌ 处理任务时发生严重错误: {task.query[:50]}... | 错误: {e}")
                 error_count += 1
