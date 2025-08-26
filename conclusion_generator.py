@@ -30,6 +30,7 @@ class ConclusionGenerator:
             model=config.MODEL_NAME
         )
         self.conclusion_prompt_template = self._create_conclusion_prompt_template()
+        self.table_title_prompt_template = self._create_table_title_prompt_template()
         
     def _create_conclusion_prompt_template(self) -> ChatPromptTemplate:
         """创建用于生成数据源JSON的Prompt模板。"""
@@ -88,24 +89,67 @@ class ConclusionGenerator:
 
 
             """),
-("human", """template_data:
+            ("human", """template_data:
                         {template_table_title}
                         {template_data}
                         template_conclusion:    
                         {template_conclusion}
                         
                         data:
+                        {data_table_title}
                         {data}
                         conclusion:
-
+                        
                             """)
         ])
+    def _create_table_title_prompt_template(self) -> ChatPromptTemplate:
+        """创建用于生成表标题的Prompt模板。"""
+        return ChatPromptTemplate.from_messages([
+            ("system", """你是一个表格标题生成专家。你需要参考给定的表格标题和参数信息，生成新的表格标题。
+            
+             示例1:
+             template_table_title: 2020-2022年怀柔区供应与成交套数及占比
+             params: {{
+                     'block': '朱村',
+                     'project': 'default',
+                     'start_time': '2021-01-01',
+                     'end_time': '2023-12-31'
+                    }}
+             table_title:2021-2023年朱村供应与成交套数及占比
+            
+             示例2:
+             template_table_title: 2020-2022年黄阁供应与成交趋势
+             params: {{
+                     'block': '北站国际商务区',
+                     'project': 'default',
+                     'start_time': '2022-01-01',
+                     'end_time': '2024-12-31'
+                    }}
+             table_title:2022-2024年北站国际商务区供应与成交趋势
+             
+            """),
+            ("human", """
+                        template_table_title: {template_table_title}
+                        params:{params}
+                        table_title:            
+            """)
+        ])
 
-    def get_conclusion(self, slide_params: Dict[str, Any], data_path: Path):
+
+    def get_conclusion(self, slide_params: Dict[str, Any],data_source: Dict, data_path: Path):
+        params = {
+            'block': data_source['block'],
+            'project': data_source['project'],
+            'start_time': data_source['start_time'],
+            'end_time': data_source['end_time']
+        }
+
         template_data = slide_params['template_slide']['content_elements'][0]['data']
         template_table_title = slide_params['template_slide']['content_elements'][0]['title']['content']
         template_conclusion = slide_params['template_slide']['analysis']['content']
+        get_table_title_chain = self.table_title_prompt_template | self.model
+        data_table_title = get_table_title_chain.invoke({"template_table_title": template_table_title, "params": params}).content
         data = pd.read_excel(data_path / 'processed'/ '1.xlsx')
         chain = self.conclusion_prompt_template | self.model
-        response = chain.invoke({"template_data": template_data, "template_table_title": template_table_title, "template_conclusion": template_conclusion, "data": data})
+        response = chain.invoke({"template_data": template_data, "template_table_title": template_table_title, "template_conclusion": template_conclusion, "data_table_title": data_table_title,"data": data})
         return response.content.replace('*', '')

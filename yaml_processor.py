@@ -92,7 +92,7 @@ class YamlProcessor:
             print(f"  -> 错误: {e}")
 
         print("5. 根据数据生成结论部分...")
-        conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_path=data_path)
+        conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_source=new_data_source, data_path=data_path)
         print(f"  -> 生成的结论是: {conclusion}")
 
         # 6. 组装最终的测评YAML结构
