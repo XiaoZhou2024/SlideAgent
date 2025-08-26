@@ -7,13 +7,13 @@ from typing import Any, Dict
 import pandas as pd
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-
+from config import config 
 
 class ConclusionGenerator:
     """
     使用大语言模型根据用户问题生成SQL查询的类。
     """
-    def __init__(self, base_url: str, api_key: str, model_name: str, temperature: float = 0):
+    def __init__(self, temperature: float = 0):
         """
         初始化SQL生成器。
 
@@ -23,15 +23,20 @@ class ConclusionGenerator:
             temperature (float, optional): 模型温度参数. 默认为 0.
         """
 
-        self.model = ChatOpenAI(base_url=base_url, api_key=api_key, temperature=temperature, model=model_name)
+        self.model = ChatOpenAI(
+            base_url=config.BASE_URL, 
+            api_key=config.API_KEY, 
+            temperature=temperature, 
+            model=config.MODEL_NAME
+        )
         self.conclusion_prompt_template = self._create_conclusion_prompt_template()
+        
     def _create_conclusion_prompt_template(self) -> ChatPromptTemplate:
         """创建用于生成数据源JSON的Prompt模板。"""
         # 将示例JSON中的花括号转义为双花括号 {{ 和 }}
-        return ChatPromptTemplate.from_messages([
-            ("system", """你是一个结论生专家。参考给定的模板数据和模板结论，给新的数据生成结论。
+        return ChatPromptTemplate.from_messages(
+            ("system", """你是一个结论生成专家。你需要参考给定的模板数据和模板结论，给新的数据生成结论。
             1.注意替换地点，数字等关键信息
- 
             示例:
             template_data:
                 2020-2022年良乡供应与成交套数及占比

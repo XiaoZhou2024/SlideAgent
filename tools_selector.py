@@ -5,12 +5,13 @@ from typing import Dict, Any
 from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 from data_process_tool import *
+from config import config
 
 class ToolSelector:
     """
     使用大语言模型根据用户问题生成SQL查询的类。
     """
-    def __init__(self, base_url: str, api_key: str, model_name: str, ):
+    def __init__(self):
         """
         初始化SQL生成器。
 
@@ -20,7 +21,12 @@ class ToolSelector:
             temperature (float, optional): 模型温度参数. 默认为 0.
         """
 
-        self.model = init_chat_model(base_url=base_url, api_key=api_key, model=model_name, model_provider="openai")
+        self.model = init_chat_model(
+            base_url=config.BASE_URL, 
+            api_key=config.API_KEY, 
+            model=config.MODEL_NAME, 
+            model_provider="openai"
+        )
         self.agent = create_react_agent(
                     model=self.model,
                     tools=[

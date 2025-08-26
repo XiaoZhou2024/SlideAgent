@@ -4,13 +4,13 @@ import json
 from typing import Any, Dict
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-
+from config import config
 
 class SqlGenerator:
     """
     使用大语言模型根据用户问题生成SQL查询的类。
     """
-    def __init__(self, base_url: str, api_key: str, model_name: str, temperature: float = 0):
+    def __init__(self, temperature: float = 0):
         """
         初始化SQL生成器。
 
@@ -20,7 +20,12 @@ class SqlGenerator:
             temperature (float, optional): 模型温度参数. 默认为 0.
         """
 
-        self.model = ChatOpenAI(base_url=base_url, api_key=api_key, temperature=temperature, model=model_name)
+        self.model = ChatOpenAI(
+            base_url=config.BASE_URL, 
+            api_key=config.API_KEY, 
+            temperature=temperature, 
+            model=config.MODEL_NAME
+        )
         self.sql_prompt_template = self._create_sql_prompt_template()
         self.datasource_prompt_template = self._create_datasource_prompt_template()
 

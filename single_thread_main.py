@@ -1,8 +1,5 @@
 # main.py
 
-import os
-from dotenv import load_dotenv
-
 from conclusion_generator import ConclusionGenerator
 from database_manager import DatabaseManager
 # 从自定义模块中导入
@@ -15,16 +12,6 @@ def main():
     """
     主函数：查找并批量处理所有报告生成任务。
     """
-    # 从 .env 文件加载环境变量
-    load_dotenv()
-    base_url = os.getenv("BASE_URL")
-    api_key = os.getenv("API_KEY")
-    model_name = os.getenv("MODEL_NAME")
-
-    if not api_key and not base_url:
-        print("错误: 未找到 LLM 环境变量。")
-        print("请在项目根目录下创建一个 .env 文件，并添加 BASE_URL='your_url' API_KEY='your_key'。")
-        return
 
     print("开始批量生成报告YAML配置...")
 
@@ -37,9 +24,9 @@ def main():
 
     # 2. 初始化SQL生成器 (只需一次)
     try:
-        sql_generator = SqlGenerator(base_url=base_url, api_key=api_key, model_name=model_name)
-        tool_selector = ToolSelector(base_url=base_url, api_key=api_key, model_name=model_name)
-        conclusion_generator = ConclusionGenerator(base_url=base_url, api_key=api_key, model_name=model_name)
+        sql_generator = SqlGenerator()
+        tool_selector = ToolSelector()
+        conclusion_generator = ConclusionGenerator()
         database_manager = DatabaseManager()
 
     except ValueError as e:
