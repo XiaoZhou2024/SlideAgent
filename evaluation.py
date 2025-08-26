@@ -52,12 +52,13 @@ def extract_sql_from_yaml(yaml_path: Path):
         # SQL语句在 output_slide -> content_elements 列表中
         elements = data.get('output_slide', {}).get('content_elements', [])
         data_source = data.get('data_source', {})
+        conclusion = data.get('output_slide', {}).get('analysis', {}).get('content', '')
         sql_list = []
         tool_call_params = []
         for element in elements:
             sql_list.append(element['sql_query'])
             tool_call_params.append({'tool': element['fun_tool'], 'args': {'area_range_size': data_source['area_range_size'], 'price_range_size': data_source['price_range_size']}})
-        return sql_list, tool_call_params
+        return sql_list, tool_call_params, conclusion
     except Exception as e:
         print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
     return ""
@@ -75,7 +76,7 @@ def extract_sql_from_gen_yaml(yaml_path: Path):
     try:
         with open(yaml_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
-        return data['sql_query'], data['tool_call_params']
+        return data['sql_query'], data['tool_call_params'], data['conclusion']
 
     except Exception as e:
         print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
@@ -191,6 +192,13 @@ def compare_tools_select(generated_tool_select, ground_truth_tool_select):
 
     return tool_equal and area_equal and price_equal
 
+def compare_conclusions(generated_conclusions: str, ground_truth_conclusions: str) -> bool:
+    generated_conclusions = generated_conclusions.replace(' ', '')
+    ground_truth_conclusions = ground_truth_conclusions.replace(' ', '')
+    print(f"  -> 生成的结论: {generated_conclusions}")
+    print(f"  -> 真实结论: {ground_truth_conclusions}")
+    return generated_conclusions == ground_truth_conclusions
+
 
 def main():
     """
@@ -218,6 +226,7 @@ def main():
     total_files = len(yaml_pairs)
     sql_match_count = 0
     tool_match_count = 0
+    conclusions_match_count = 0
     results_log = []
 
     # 3. 遍历并评估每一对文件
@@ -226,8 +235,8 @@ def main():
         print(f"  生成文件: {gen_path.name}")
         print(f"  真实文件: {truth_path.name}")
 
-        gen_sql, gen_tool_call_params = extract_sql_from_gen_yaml(gen_path)
-        truth_sql, truth_tool_call_params = extract_sql_from_yaml(truth_path)
+        gen_sql, gen_tool_call_params, gen_conclusion = extract_sql_from_gen_yaml(gen_path)
+        truth_sql, truth_tool_call_params, truth_conclusion = extract_sql_from_yaml(truth_path)
 
         for i in range(len(gen_sql)):
             sql_is_match = compare_sql_execution(engine, gen_sql[i], truth_sql[i])
@@ -246,6 +255,13 @@ def main():
             else:
                 print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
 
+
+        conclusions_is_match = compare_conclusions(gen_conclusion,truth_conclusion)
+        if conclusions_is_match:
+            conclusions_match_count += 1
+            print("  -> 结果: ✅ 匹配 (Conclusion Execution Match)")
+        else:
+            print("  -> 结果: ❌ 不匹配(Conclusion Execution Match)")
 
 
 
