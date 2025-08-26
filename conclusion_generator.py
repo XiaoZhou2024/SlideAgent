@@ -34,9 +34,9 @@ class ConclusionGenerator:
     def _create_conclusion_prompt_template(self) -> ChatPromptTemplate:
         """创建用于生成数据源JSON的Prompt模板。"""
         # 将示例JSON中的花括号转义为双花括号 {{ 和 }}
-        return ChatPromptTemplate.from_messages([
+        return ChatPromptTemplate.from_messages(
             ("system", """你是一个结论生成专家。你需要参考给定的模板数据和模板结论，给新的数据生成结论。
- 
+            1.注意替换地点，数字等关键信息
             示例:
             template_data:
                 2020-2022年良乡供应与成交套数及占比
@@ -88,6 +88,7 @@ class ConclusionGenerator:
 
             """),
             ("human", """template_data:
+                        {template_table_title}
                         {template_data}
                         template_conclusion:    
                         {template_conclusion}
@@ -101,8 +102,9 @@ class ConclusionGenerator:
 
     def get_conclusion(self, slide_params: Dict[str, Any], data_path: Path):
         template_data = slide_params['template_slide']['content_elements'][0]['data']
+        template_table_title = slide_params['template_slide']['content_elements'][0]['title']['content']
         template_conclusion = slide_params['template_slide']['analysis']['content']
         data = pd.read_excel(data_path / 'processed'/ '1.xlsx')
         chain = self.conclusion_prompt_template | self.model
-        response = chain.invoke({"template_data": template_data, "template_conclusion": template_conclusion, "data": data})
+        response = chain.invoke({"template_data": template_data, "template_table_title": template_table_title, "template_conclusion": template_conclusion, "data": data})
         return response.content.replace('*', '')

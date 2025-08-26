@@ -80,10 +80,16 @@ class YamlProcessor:
         sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params=parsed_template_structure)
         print(f"  -> 生成的SQL: {sql_query}")
         data_path = self.create_timestamped_folder()
-        self.database_manager.execute_query_save_data(sql_query, data_path)
+        try:
+            self.database_manager.execute_query_save_data(sql_query, data_path)
+        except Exception as e:
+            print(f"  -> 错误: {e}")
 
         print("4. 给定用户需求与ppt意图自动调用工具  ...")
-        tool_call_params = self.tool_selector.select_function_by_intent(data_source=new_data_source, slide_params=parsed_template_structure, data_path=data_path)
+        try:
+            tool_call_params = self.tool_selector.select_function_by_intent(data_source=new_data_source, slide_params=parsed_template_structure, data_path=data_path)
+        except Exception as e:
+            print(f"  -> 错误: {e}")
 
         print("5. 根据数据生成结论部分...")
         conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_path=data_path)
