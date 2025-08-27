@@ -35,7 +35,7 @@ class SqlGenerator:
             ("system", """你是一个SQL专家，根据用户的问题生成一个有效的SQL查询语句。
         数据库表结构信息如下:
         - 表名: public.new_house, public.resale_house
-        - 字段: supply_sets, trade_sets, city_name, district_name, block_name, date_code
+        - 字段: supply_sets, trade_sets, dim_area, dim_price, dim_unit_price, city_name, district_name, block_name, project_name, date_code
 
         要求:
         1. 只生成SQL查询语句本身，不要包含任何解释或代码块标记(```)。
@@ -59,7 +59,27 @@ class SqlGenerator:
             'column_headers': ['2020供应套数', '2020成交套数', '2021供应套数', '2021成交套数', '2022供应套数', '2022成交套数']
         }}
         回答: SELECT date_code, supply_sets, trade_sets, dim_area FROM public.new_house WHERE city_name = '北京市' AND district_name = '海淀区' AND block_name = '永丰' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
+        
+        示例3:
+        user_question: 基于该模板，请生成2024年1-6月北京市房山区良乡中建学府印悦二期的分析报告。
+        slide_params:{{
+            'table_name': '2024年1-6月密云区国祥府房价走势', 
+            'row_headers': ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06'], 
+            'column_headers': ['date', 'avg_unit_price']
+        }}
+        回答: SELECT date_code, dim_unit_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '房山区' AND block_name = '良乡' AND project_name ='中建学府印悦二期' AND date_code >= '2024-01-01' AND date_code <= '2024-06-30'
+        
+        示例4:
+        user_question: 基于该模板，请生成2021-2023年上海市徐汇区古美板块板块的详细报告, 将面积段间隔设置为30㎡.
+        slide_params:{{
+            'table_name': '2020-2022年南山CBD二手房面积段房源数量统计', 
+            'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '≥200㎡'], 
+            'column_headers': ['area_range', 'count']
+        }}
+        回答: SELECT dim_area FROM public.resale_house WHERE city_name = '上海市' AND district_name = '徐汇区' AND block_name = '古美板块' AND date_code >= '2021-01-01' AND date_code <= '2023-12-31'
+        
         """),
+
             ("human", "user_question:{user_question}  slide_params:{slide_params}")
         ])
     
@@ -87,7 +107,7 @@ class SqlGenerator:
             "price_range_size": "default"
             }}
 
-            问题: 基于该模板，请生成2020-2022年深圳市龙岗区龙岗中心城板块的分析报告, 将面积段间隔设置为25㎡。
+            问题: 基于该模板，请生成2020-2022年深圳市龙岗区龙岗中心城板块的分析报告, 将面积段间隔设置为25㎡, 将价格段间隔设置为200万元。
             回答:
             {{
             "city": "深圳市",
@@ -97,7 +117,7 @@ class SqlGenerator:
             "start_time": "2020-01-01",
             "end_time": "2022-12-31",
             "area_range_size": "25",
-            "price_range_size": "default"
+            "price_range_size": "200"
             }}
             
             问题: 基于该模板，请生成2020-2022年广州市南沙区黄阁板块的分析报告, 将价格段间隔设置为100万元。
@@ -111,6 +131,19 @@ class SqlGenerator:
             "end_time": "2022-12-31",
             "area_range_size": "default",
             "price_range_size": "100"
+            }}
+            
+            问题: 基于该模板，请生成2024年1-6月北京市房山区良乡中建学府印悦二期的分析报告。
+            回答:
+            {{
+            "city": "北京市",
+            "district": "房山区",
+            "block": "良乡",
+            "project": "中建学府印悦二期",
+            "start_time": "2024-1-01",
+            "end_time": "2024-6-31",
+            "area_range_size": "default",
+            "price_range_size": "default"
             }}
             """),
             ("human", "{user_question}")
