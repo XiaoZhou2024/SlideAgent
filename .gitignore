@@ -2,6 +2,6 @@
 .env
 
 # 忽略某个目录
-ReSlide_01/
+ReSlide/
 data/
 .env
