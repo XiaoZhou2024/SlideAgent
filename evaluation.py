@@ -13,7 +13,7 @@ from pandas._testing import assert_frame_equal
 from sqlalchemy import create_engine
 
 
-def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_*/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
+def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_03/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
     """
     查找所有生成的YAML文件及其对应的原始Ground Truth YAML文件。
 
@@ -225,6 +225,7 @@ def main():
 
     total_files = len(yaml_pairs)
     sql_match_count = 0
+    all_sql_count = 0
     tool_match_count = 0
     conclusions_match_count = 0
     results_log = []
@@ -242,7 +243,7 @@ def main():
             sql_is_match = compare_sql_execution(engine, gen_sql[i], truth_sql[i])
             print(truth_tool_call_params[i])
             tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
-
+            all_sql_count += 1
             if sql_is_match:
                 sql_match_count += 1
                 print("  -> 结果: ✅ 匹配 (SQL Execution Match)")
@@ -264,7 +265,11 @@ def main():
             print("  -> 结果: ❌ 不匹配(Conclusion Execution Match)")
 
 
-
+    print("6. 评估结果...")
+    print(f"  -> sql数量：{all_sql_count}")
+    print(f"  -> sql匹配数量：{sql_match_count}")
+    print(f"  -> 工具匹配数量：{tool_match_count}")
+    print(f"  -> 结论匹配数量：{conclusions_match_count}")
     #     results_log.append({
     #         "generated_file": gen_path.name,
     #         "ground_truth_file": truth_path.name,

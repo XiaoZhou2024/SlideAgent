@@ -70,13 +70,22 @@ class SqlGenerator:
         回答: SELECT date_code, dim_unit_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '房山区' AND block_name = '良乡' AND project_name ='中建学府印悦二期' AND date_code >= '2024-01-01' AND date_code <= '2024-06-30'
         
         示例4:
-        user_question: 基于该模板，请生成2021-2023年上海市徐汇区古美板块板块的详细报告, 将面积段间隔设置为30㎡.
+        user_question: 基于该模板，请生成2021-2023年上海市徐汇区古美板块板块的详细报告, 将面积段间隔设置为30㎡。
         slide_params:{{
             'table_name': '2020-2022年南山CBD二手房面积段房源数量统计', 
             'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '≥200㎡'], 
             'column_headers': ['area_range', 'count']
         }}
         回答: SELECT dim_area FROM public.resale_house WHERE city_name = '上海市' AND district_name = '徐汇区' AND block_name = '古美板块' AND date_code >= '2021-01-01' AND date_code <= '2023-12-31'
+        
+        示例5:
+        user_question: 基于该模板，请生成2020-2022年北京市密云区密云区板块的分析报告, 将面积段间隔设置为30㎡。
+        slide_params:{{
+            'table_name': '2020-2022年良乡价格段房源数量统计', 1
+            'row_headers': ['0-200万元', '200-400万元', '400-600万元', '600-800万元', '800-1000万元', '1000-1200万元', '≥1200万元'], 
+            'column_headers': ['price_range', 'count']
+        }}
+        回答: SELECT dim_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '密云区' AND block_name = '密云区' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
         
         """),
 

@@ -149,7 +149,7 @@ class ConclusionGenerator:
         template_conclusion = slide_params['template_slide']['analysis']['content']
         get_table_title_chain = self.table_title_prompt_template | self.model
         data_table_title = get_table_title_chain.invoke({"template_table_title": template_table_title, "params": params}).content
-        data = pd.read_excel(data_path / 'processed'/ '1.xlsx')
+        data = pd.read_excel(data_path / 'processed'/ '0.xlsx')
         chain = self.conclusion_prompt_template | self.model
         response = chain.invoke({"template_data": template_data, "template_table_title": template_table_title, "template_conclusion": template_conclusion, "data_table_title": data_table_title,"data": data})
         return response.content.replace('*', '')

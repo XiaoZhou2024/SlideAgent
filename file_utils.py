@@ -14,7 +14,7 @@ class ReportTask(NamedTuple):
     query: str
     ground_truth_yaml_path: Path
 
-def find_target_csv_files(base_pattern: str = "ReSlide/ReSlide_*/template-*/temp/filename_to_label.csv") -> List[Path]:
+def find_target_csv_files(base_pattern: str = "ReSlide/ReSlide_02/template-*/temp/filename_to_label.csv") -> List[Path]:
     """
     根据指定的模式查找所有目标CSV文件。
 
@@ -49,9 +49,6 @@ def read_report_tasks_from_csv(csv_path: Path) -> List[ReportTask]:
                 
                 pptx_path_str, query, yaml_path_str = row
 
-                print(pptx_path_str)
-                print(yaml_path_str)
-                
                 # 解析路径并使其相对于CSV文件所在目录
                 # 假设CSV中的路径是相对于项目根目录的
                 pptx_path = Path(pptx_path_str).resolve()

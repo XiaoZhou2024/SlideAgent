@@ -68,6 +68,8 @@ class YamlProcessor:
         Returns:
             一个包含所有生成信息的字典。
         """
+        conclusion = ''
+        tool_call_params =''
         print("1. 解析用户意图生成 'data_source'...")
         new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
         print(f"  -> 生成的数据源: {new_data_source}")
@@ -92,8 +94,11 @@ class YamlProcessor:
             print(f"  -> 错误: {e}")
 
         print("5. 根据数据生成结论部分...")
-        conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_source=new_data_source, data_path=data_path)
-        print(f"  -> 生成的结论是: {conclusion}")
+        try:
+            conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_source=new_data_source, data_path=data_path)
+            print(f"  -> 生成的结论是: {conclusion}")
+        except Exception as e:
+            print(f"  -> 错误: {e}")
 
         # 6. 组装最终的测评YAML结构
         eval_yaml = {
