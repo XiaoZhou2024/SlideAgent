@@ -14,7 +14,7 @@ class ReportTask(NamedTuple):
     query: str
     ground_truth_yaml_path: Path
 
-def find_target_csv_files(base_pattern: str = "ReSlide/ReSlide_02/template-*/temp/filename_to_label.csv") -> List[Path]:
+def find_target_csv_files(base_pattern: str = "ReSlide/ReSlide_*/template-*/temp/filename_to_label.csv") -> List[Path]:
     """
     根据指定的模式查找所有目标CSV文件。
 

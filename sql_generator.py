@@ -81,12 +81,84 @@ class SqlGenerator:
         示例5:
         user_question: 基于该模板，请生成2020-2022年北京市密云区密云区板块的分析报告, 将面积段间隔设置为30㎡。
         slide_params:{{
-            'table_name': '2020-2022年良乡价格段房源数量统计', 1
+            'table_name': '2020-2022年良乡价格段房源数量统计', 
             'row_headers': ['0-200万元', '200-400万元', '400-600万元', '600-800万元', '800-1000万元', '1000-1200万元', '≥1200万元'], 
             'column_headers': ['price_range', 'count']
         }}
         回答: SELECT dim_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '密云区' AND block_name = '密云区' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
         
+        示例6:
+        user_question: 基于该模板，请生成2020-2022年北京市密云区密云区板块的分析报告, 将价格段间隔设置为150万元。
+        slide_params:{{
+            'table_name': '2020-2022年良乡面积-总价交叉分析', 
+            'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '≥200㎡'], 
+            'column_headers': ['0-200万元', '200-400万元', '400-600万元', '600-800万元', '800-1000万元', '1000-1200万元', '≥1200万元']
+        }}
+        回答: SELECT dim_area, dim_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '密云区' AND block_name = '密云区' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'
+        
+        示例7:
+        user_question: 基于该模板，请生成2021-2023年上海市徐汇区古美板块板块的分析报告。
+        slide_params:{{
+            'table_name': '2020-2022年良乡二手房面积段房源数量统计', 
+            'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '≥200㎡'], 
+            'column_headers':  ['area_range', 'count']
+        }}
+        回答: SELECT dim_area FROM public.resale_house WHERE city_name = '上海市' AND district_name = '徐汇区' AND block_name = '古美板块' AND date_code >= '2021-01-01' AND date_code <= '2023-12-31'
+        
+        示例8:
+        user_question: 基于该模板，请生成北京市怀柔区怀柔区板块的详细报告。
+        slide_params:{{
+            'table_name': '古美商品住宅历年套数量', 
+            'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
+            'column_headers':  ['year', '供应套数', '成交套数']
+        }}
+        回答: SELECT date_code, supply_sets, trade_sets, dim_area, dim_unit_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '怀柔区' AND block_name = '怀柔区' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+      
+        示例9:
+        user_question: 基于该模板，请生成北京市怀柔区怀柔区板块的详细报告。
+        slide_params:{{
+            'table_name': '沙井商品住宅历年面积量', 
+            'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
+            'column_headers':  ['year', '供应面积（万m2）', '成交面积（万m2）']
+        }}
+        回答: SELECT date_code, supply_sets, trade_sets, dim_area, dim_unit_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '怀柔区' AND block_name = '怀柔区' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+      
+        示例10:
+        user_question: 基于该模板，请生成2020-2024年北京市石景山区首钢板块的分析报告。
+        slide_params:{{
+            'table_name': '黄阁商品住宅历年市场容量', 
+            'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
+            'column_headers':  ['year', '供应面积（万m2）', '供应套数', '成交面积（万m2）','成交套数', '成交均价（元/m2）']
+        }}
+        回答: SELECT date_code, supply_sets, trade_sets, dim_area, dim_unit_price FROM public.['new_house'] WHERE city_name = '北京市' AND district_name = '石景山区' AND block_name = '首钢' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+      
+        示例11:
+        user_question: 基于该模板，请生成上海市浦东新区北蔡板块的分析报告。
+        slide_params:{{
+            'table_name': '南山CBD二手房成交套数及均价统计', 
+            'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
+            'column_headers':  ['year', '成交面积（万m2）','成交套数', '成交均价（元/m2）']
+        }}
+        回答: SELECT dim_area, dim_unit_price, date_code, trade_sets FROM public.resale_house WHERE city_name = '上海市' AND district_name = '浦东新区' AND block_name = '北蔡' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+      
+        示例12:
+        user_question: 基于该模板，请生成上海市浦东新区大三林板块板块的分析报告。
+        slide_params:{{
+            'table_name': '南山CBD二手房成交均价分布', 
+            'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
+            'column_headers':  ['year', '成交均价（元/m2）']
+        }}
+        回答: SELECT dim_area, dim_unit_price, date_code, trade_sets FROM public.resale_house WHERE city_name = '上海市' AND district_name = '浦东新区' AND block_name = '大三林板块' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+      
+        示例13:
+        user_question: 基于该模板，请生成上海市普陀区真如、曹杨板块的分析报告。
+        slide_params:{{
+            'table_name': '南山CBD二手房成交均价分布', 
+            'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
+            'column_headers':  ['year', '成交套数']
+        }}
+        回答: SELECT dim_area, dim_unit_price, date_code, trade_sets FROM public.resale_house WHERE city_name = '上海市' AND district_name = '普陀区' AND block_name = '真如、曹杨' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+      
         """),
 
             ("human", "user_question:{user_question}  slide_params:{slide_params}")

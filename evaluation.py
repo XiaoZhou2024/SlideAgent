@@ -13,7 +13,7 @@ from pandas._testing import assert_frame_equal
 from sqlalchemy import create_engine
 
 
-def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_03/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
+def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_04/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
     """
     查找所有生成的YAML文件及其对应的原始Ground Truth YAML文件。
 
@@ -175,7 +175,7 @@ def compare_tools_select(generated_tool_select, ground_truth_tool_select):
         "compute_area_price_matrix": '面积-总价交叉分析',
         "compute_area_num_stats": '面积段房源数量统计',
         "compute_price_num_stats": '价格段房源数量统计',
-
+        'compute_area_price_cross_stats': '面积-总价交叉分析',
         "compute_market_capacity": '商品住宅历年市场容量',
         "compute_annual_traded_units": '商品住宅历年套数量',
         "compute_annual_traded_area": '商品住宅历年面积量',
@@ -186,7 +186,10 @@ def compare_tools_select(generated_tool_select, ground_truth_tool_select):
     }
     print(generated_tool_select['tool'])
     print(ground_truth_tool_select['tool'])
-    tool_equal = tool_dic[generated_tool_select['tool']] == ground_truth_tool_select['tool']
+    try:
+        tool_equal = tool_dic[generated_tool_select['tool']] == ground_truth_tool_select['tool']
+    except KeyError:
+        return False
     area_equal = generated_tool_select['args']['area_range_size'] == ground_truth_tool_select['args']['area_range_size']
     price_equal = generated_tool_select['args']['price_range_size'] == ground_truth_tool_select['args']['price_range_size']
 
