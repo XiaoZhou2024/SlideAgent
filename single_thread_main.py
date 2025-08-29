@@ -49,11 +49,12 @@ def main():
         print(f"在此文件中找到 {len(tasks)} 个任务。")
 
         for task in tasks:
+            print(task)
             # 为每个任务创建一个处理器实例
             processor = YamlProcessor(task, sql_generator, database_manager, tool_selector, conclusion_generator)
 
             # 执行处理并生成最终的YAML数据
-            generated_data = processor.process_and_generate()
+            generated_data = processor.process_and_generate(task)
 
             # 保存到文件
             processor.save_to_file(generated_data)

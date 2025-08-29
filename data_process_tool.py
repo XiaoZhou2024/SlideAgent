@@ -506,7 +506,6 @@ def compute_resale_house_avg_price_distribution(input_path: str, output_path: st
 
 def get_recent_transaction_trend(input_path: str, output_path: str,
                           project_name: str | None = None,
-                          freq: str = 'M'   # 'M'：自然月；'Q'：季度
                          ):
     """
     小区房价走势
@@ -525,7 +524,7 @@ def get_recent_transaction_trend(input_path: str, output_path: str,
     df['dim_unit_price'] = pd.to_numeric(df['dim_unit_price'], errors='coerce')
 
     # 使用 PeriodIndex 聚合
-    df['year_month'] = df['date_code'].dt.to_period(freq)
+    df['year_month'] = df['date_code'].dt.to_period('M')
     avg_price = (
         df.groupby('year_month')['dim_unit_price']
           .mean()

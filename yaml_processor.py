@@ -61,61 +61,97 @@ class YamlProcessor:
         path.mkdir(parents=True, exist_ok=True)
         return path.resolve()
 
-    def process_and_generate(self) -> Dict[str, Any]:
-        """
-        执行完整的处理流程，生成最终的YAML数据字典。
-
-        Returns:
-            一个包含所有生成信息的字典。
-        """
-        conclusion = ''
-        tool_call_params =''
+    def parse_ppt_and_requirements_params(self):
         print("1. 解析用户意图生成 'data_source'...")
         new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
-        print(f"  -> 生成的数据源: {new_data_source}")
 
         print(f"2. 解析PPT模板意图: {self.task.pptx_template_path.name}")
         parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
+        return new_data_source, parsed_template_structure
 
+    def generate_sql(self, parsed_template_structure: Dict[str, Any]):
         print("3. 根据用户需求与ppt解析生成SQL查询语句,接着检索数据存储到data目录  ...")
         '''sql_query的数据类型是list'''
-        sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params=parsed_template_structure)
+        sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params = parsed_template_structure)
         print(f"  -> 生成的SQL: {sql_query}")
         data_path = self.create_timestamped_folder()
         try:
             self.database_manager.execute_query_save_data(sql_query, data_path)
         except Exception as e:
             print(f"  -> 错误: {e}")
+        return sql_query, data_path
 
+    def get_standard_answer_sql(self, task: ReportTask):
+        with open(task.ground_truth_yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        elements = data.get('output_slide', {}).get('content_elements', [])
+        sql_list = []
+        for element in elements:
+            sql_list.append(element['sql_query'])
+        sql_query = sql_list
+        print(f"  -> 生成的SQL: {sql_query}")
+        data_path = self.create_timestamped_folder()
+        try:
+            self.database_manager.execute_query_save_data(sql_query, data_path)
+        except Exception as e:
+            print(f"  -> 错误: {e}")
+        return sql_query, data_path
+
+    def generate_tool_call_params(self, new_data_source: Dict, parsed_template_structure: Dict[str, Any], data_path: Path):
         print("4. 给定用户需求与ppt意图自动调用工具  ...")
         try:
             tool_call_params = self.tool_selector.select_function_by_intent(data_source=new_data_source, slide_params=parsed_template_structure, data_path=data_path)
+            return tool_call_params
         except Exception as e:
             print(f"  -> 错误: {e}")
+            return ''
 
+    def generate_conclusion(self, new_data_source: Dict, parsed_template_structure: Dict[str, Any], data_path: Path) -> str:
         print("5. 根据数据生成结论部分...")
         try:
-            conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure, data_source=new_data_source, data_path=data_path)
+            conclusion = self.conclusion_generator.get_conclusion(slide_params=parsed_template_structure,
+                                                                  data_source=new_data_source, data_path=data_path)
             print(f"  -> 生成的结论是: {conclusion}")
+            return conclusion
         except Exception as e:
             print(f"  -> 错误: {e}")
+            return ''
 
-        # 6. 组装最终的测评YAML结构
+
+    def process_and_generate(self, task: ReportTask) -> Dict[str, Any]:
+        """
+        执行完整的处理流程，生成最终的YAML数据字典。
+
+        Returns:
+            一个包含所有生成信息的字典。
+        """
+        FLAG = False
+
+        if FLAG:
+            new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
+            sql_query, data_path = self.generate_sql(parsed_template_structure)
+            tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
+            conclusion = self.generate_conclusion(new_data_source, parsed_template_structure, data_path)
+        else:
+            new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
+            sql_query, data_path = self.get_standard_answer_sql(task)
+            tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
+
+
+
         eval_yaml = {
             'sql_query': sql_query,
             'tool_call_params': tool_call_params,
-            'conclusion': conclusion,
+            # 'conclusion': conclusion,
         }
 
-        #
-        # # 4. 组装最终的YAML结构
+
         # generated_yaml = {
         #     'query': self.task.query,
         #     'data_source': new_data_source,  # 使用LLM生成的数据源
         #     'template_slide': parsed_template_structure.get('template_slide'), # 使用解析出的结构
         #     'output_slide': new_output_slide
         # }
-        #
         return eval_yaml
 
     def save_to_file(self, data: Dict[str, Any]):
