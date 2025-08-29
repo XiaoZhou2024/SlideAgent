@@ -342,25 +342,18 @@ def compute_annual_traded_units(input_path: str, output_path: str):
     # 保证这些列数值化
     block_df['supply_sets'] = pd.to_numeric(block_df['supply_sets'], errors='coerce')
     block_df['trade_sets'] = pd.to_numeric(block_df['trade_sets'], errors='coerce')
-    block_df['dim_area'] = pd.to_numeric(block_df['dim_area'], errors='coerce')
 
     # 供应面积与套数（供应面积：supply_sets==1的dim_area求和）
-    supply_area = block_df[block_df['supply_sets'] == 1].groupby('year')['dim_area'].sum()
-    supply_area = (supply_area/10000).round(2)
     supply_sets = block_df.groupby('year')['supply_sets'].sum()
     supply_sets = supply_sets.astype('int')
 
     # 成交面积与套数（成交面积：trade_sets==1的dim_area求和）
-    trade_area = block_df[block_df['trade_sets'] == 1].groupby('year')['dim_area'].sum()
-    trade_area = (trade_area/10000).round(2)
     trade_sets = block_df.groupby('year')['trade_sets'].sum()
     trade_sets = trade_sets.astype('int')
 
     # 合并
     result = pd.concat([
-        supply_area.rename('供应面积（万m2）'),
         supply_sets.rename('供应套数'),
-        trade_area.rename('成交面积（万m2）'),
         trade_sets.rename('成交套数'),
     ], axis=1).reset_index()
 
@@ -371,7 +364,6 @@ def compute_annual_traded_units(input_path: str, output_path: str):
     result = result.fillna(0)
 
     # --- 拆分成两个 DataFrame ---
-    area_df = result[['year', '供应面积（万m2）', '成交面积（万m2）']]
     sets_df = result[['year', '供应套数', '成交套数']]
 
     with pd.ExcelWriter(output_path) as writer:
@@ -393,21 +385,15 @@ def compute_annual_traded_area(input_path: str, output_path: str):
     # 供应面积与套数（供应面积：supply_sets==1的dim_area求和）
     supply_area = block_df[block_df['supply_sets'] == 1].groupby('year')['dim_area'].sum()
     supply_area = (supply_area/10000).round(2)
-    supply_sets = block_df.groupby('year')['supply_sets'].sum()
-    supply_sets = supply_sets.astype('int')
 
     # 成交面积与套数（成交面积：trade_sets==1的dim_area求和）
     trade_area = block_df[block_df['trade_sets'] == 1].groupby('year')['dim_area'].sum()
     trade_area = (trade_area/10000).round(2)
-    trade_sets = block_df.groupby('year')['trade_sets'].sum()
-    trade_sets = trade_sets.astype('int')
 
     # 合并
     result = pd.concat([
         supply_area.rename('供应面积（万m2）'),
-        supply_sets.rename('供应套数'),
         trade_area.rename('成交面积（万m2）'),
-        trade_sets.rename('成交套数'),
     ], axis=1).reset_index()
 
     # 按年份升序排列
@@ -838,7 +824,3 @@ def compact_merge_price_or_area_ranges(df, max_rows=10):
     return result_df
 
 
-# import pandas as pd
-# data = pd.read_csv("./data/demo.csv")
-# df = get_recent_transaction_trend(data)
-# df.to_excel("./data/output.xlsx", index=False)  # 不写入行索引

@@ -13,7 +13,7 @@ from pandas._testing import assert_frame_equal
 from sqlalchemy import create_engine
 
 
-def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_04/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
+def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_07/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
     """
     查找所有生成的YAML文件及其对应的原始Ground Truth YAML文件。
 
@@ -51,17 +51,57 @@ def extract_sql_from_yaml(yaml_path: Path):
             data = yaml.safe_load(f)
         # SQL语句在 output_slide -> content_elements 列表中
         elements = data.get('output_slide', {}).get('content_elements', [])
-        data_source = data.get('data_source', {})
-        conclusion = data.get('output_slide', {}).get('analysis', {}).get('content', '')
         sql_list = []
-        tool_call_params = []
         for element in elements:
             sql_list.append(element['sql_query'])
-            tool_call_params.append({'tool': element['fun_tool'], 'args': {'area_range_size': data_source['area_range_size'], 'price_range_size': data_source['price_range_size']}})
-        return sql_list, tool_call_params, conclusion
+        return sql_list
     except Exception as e:
         print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
     return ""
+
+def extract_tool_call_params_from_yaml(yaml_path: Path):
+    """
+    从YAML文件中提取第一条SQL查询语句。
+
+    Args:
+        yaml_path (Path): YAML文件的路径。
+
+    Returns:
+        str: 提取到的SQL查询语句，如果找不到则返回空字符串。
+    """
+    try:
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        # SQL语句在 output_slide -> content_elements 列表中
+        elements = data.get('output_slide', {}).get('content_elements', [])
+        data_source = data.get('data_source', {})
+        tool_call_params = []
+        for element in elements:
+            tool_call_params.append({'tool': element['fun_tool'], 'args': {'area_range_size': data_source['area_range_size'], 'price_range_size': data_source['price_range_size']}})
+        return tool_call_params
+    except Exception as e:
+        print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
+    return ""
+
+def extract_conclusion_from_yaml(yaml_path: Path):
+    """
+    从YAML文件中提取第一条SQL查询语句。
+
+    Args:
+        yaml_path (Path): YAML文件的路径。
+
+    Returns:
+        str: 提取到的SQL查询语句，如果找不到则返回空字符串。
+    """
+    try:
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        conclusion = data.get('output_slide', {}).get('analysis', {}).get('content', '')
+        return conclusion
+    except Exception as e:
+        print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
+    return ""
+
 
 def extract_sql_from_gen_yaml(yaml_path: Path):
     """
@@ -76,7 +116,8 @@ def extract_sql_from_gen_yaml(yaml_path: Path):
     try:
         with open(yaml_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
-        return data['sql_query'], data['tool_call_params'], data['conclusion']
+
+        return data['sql_query']
 
     except Exception as e:
         print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
@@ -239,40 +280,51 @@ def main():
         print(f"  生成文件: {gen_path.name}")
         print(f"  真实文件: {truth_path.name}")
 
-        gen_sql, gen_tool_call_params, gen_conclusion = extract_sql_from_gen_yaml(gen_path)
-        truth_sql, truth_tool_call_params, truth_conclusion = extract_sql_from_yaml(truth_path)
-
+        gen_sql = extract_sql_from_gen_yaml(gen_path)
+        truth_sql = extract_sql_from_yaml(truth_path)
         for i in range(len(gen_sql)):
-            sql_is_match = compare_sql_execution(engine, gen_sql[i], truth_sql[i])
-            print(truth_tool_call_params[i])
-            tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
-            all_sql_count += 1
+            try:
+                sql_is_match = compare_sql_execution(engine, gen_sql[i], truth_sql[i])
+            except:
+                sql_is_match =  False
             if sql_is_match:
                 sql_match_count += 1
                 print("  -> 结果: ✅ 匹配 (SQL Execution Match)")
             else:
                 print("  -> 结果: ❌ 不匹配(SQL Execution Match)")
+    #
+    #     gen_tool_call_params = extract_tool_call_params_from_yaml(gen_path)
+    #     truth_tool_call_params = extract_tool_call_params_from_yaml(truth_path)
+    #     for i in range(len(gen_sql)):
+    #         try:
+    #             tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
+    #         except:
+    #             tool_is_match = False
+    #         all_sql_count += 1
+    #         if tool_is_match:
+    #             tool_match_count += 1
+    #             print("  -> 结果: ✅ 匹配 (Tool Execution Match)")
+    #         else:
+    #             print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
+    #
+    #
+    #     gen_conclusion = extract_conclusion_from_yaml(gen_path)
+    #     truth_conclusion = extract_conclusion_from_yaml(truth_path)
+    #     conclusions_is_match = compare_conclusions(gen_conclusion,truth_conclusion)
+    #     if conclusions_is_match:
+    #         conclusions_match_count += 1
+    #         print("  -> 结果: ✅ 匹配 (Conclusion Execution Match)")
+    #     else:
+    #         print("  -> 结果: ❌ 不匹配(Conclusion Execution Match)")
+    #
+    #
+    # print("6. 评估结果...")
+    # print(f"  -> sql数量：{all_sql_count}")
+    # print(f"  -> sql匹配数量：{sql_match_count}")
+    # print(f"  -> 工具匹配数量：{tool_match_count}")
+    # print(f"  -> 结论匹配数量：{conclusions_match_count}")
 
-            if tool_is_match:
-                tool_match_count += 1
-                print("  -> 结果: ✅ 匹配 (Tool Execution Match)")
-            else:
-                print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
 
-
-        conclusions_is_match = compare_conclusions(gen_conclusion,truth_conclusion)
-        if conclusions_is_match:
-            conclusions_match_count += 1
-            print("  -> 结果: ✅ 匹配 (Conclusion Execution Match)")
-        else:
-            print("  -> 结果: ❌ 不匹配(Conclusion Execution Match)")
-
-
-    print("6. 评估结果...")
-    print(f"  -> sql数量：{all_sql_count}")
-    print(f"  -> sql匹配数量：{sql_match_count}")
-    print(f"  -> 工具匹配数量：{tool_match_count}")
-    print(f"  -> 结论匹配数量：{conclusions_match_count}")
     #     results_log.append({
     #         "generated_file": gen_path.name,
     #         "ground_truth_file": truth_path.name,

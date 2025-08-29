@@ -108,11 +108,11 @@ class SqlGenerator:
         示例8:
         user_question: 基于该模板，请生成北京市怀柔区怀柔区板块的详细报告。
         slide_params:{{
-            'table_name': '古美商品住宅历年套数量', 
+            'table_name': '永丰商品住宅历年套数量', 
             'row_headers': ['2020', '2021', '2022', '2023', '2024'],,
             'column_headers':  ['year', '供应套数', '成交套数']
         }}
-        回答: SELECT date_code, supply_sets, trade_sets, dim_area, dim_unit_price FROM public.new_house WHERE city_name = '北京市' AND district_name = '怀柔区' AND block_name = '怀柔区' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
+        回答: SELECT date_code, supply_sets, trade_sets FROM public.new_house WHERE city_name = '北京市' AND district_name = '怀柔区' AND block_name = '怀柔区' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'
       
         示例9:
         user_question: 基于该模板，请生成北京市怀柔区怀柔区板块的详细报告。
