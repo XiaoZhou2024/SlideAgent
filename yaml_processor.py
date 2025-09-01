@@ -10,9 +10,10 @@ from conclusion_generator import ConclusionGenerator
 from database_manager import DatabaseManager
 # 从其他模块导入依赖
 from file_utils import ReportTask, load_yaml_file
-from pptx_parser import PptxParser
+from pptx_parser2 import PptxParser
 from sql_generator import SqlGenerator
 from tools_selector import ToolSelector
+
 
 
 class YamlProcessor:
@@ -66,7 +67,8 @@ class YamlProcessor:
         new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
 
         print(f"2. 解析PPT模板意图: {self.task.pptx_template_path.name}")
-        parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
+        # parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
+        parsed_template_structure = self.pptx_parser.parse_slide_vlm(slide_idx=0)
         return new_data_source, parsed_template_structure
 
     def generate_sql(self, parsed_template_structure: Dict[str, Any]):
