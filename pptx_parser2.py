@@ -266,7 +266,16 @@ class PptxParser:
             shutil.rmtree(temp_path)
         
         return vlm_results, img_w, img_h
-    
+    def _bbox_px_2_layout(self, bbox: list, pptx_cm_to_px_w_ratio: float, pptx_cm_to_px_h_ratio: float)-> dict:
+        return {
+            "x": round(bbox[0] / pptx_cm_to_px_w_ratio, 2),
+            "y": round(bbox[1] / pptx_cm_to_px_h_ratio, 2),
+            "width": round((bbox[2]-bbox[0]) / pptx_cm_to_px_w_ratio, 2),
+            "height": round((bbox[3]-bbox[1]) / pptx_cm_to_px_h_ratio, 2),
+        }
+
+
+
     def _match_elements(self, pptx_elements: List[Dict[str, Any]], vlm_results: List[Dict[str, Any]], img_w: int, img_h: int) -> Dict[str, Any]:
         """
         将 pptx 提取的元素与 VLM 识别的文本进行匹配和整合。
@@ -277,19 +286,20 @@ class PptxParser:
             "analysis": None,
             "content_elements": []
         }
-        
+
+        pptx_cm_to_px_w_ratio = img_w / emu_to_cm(self.presentation.slide_width)
+        pptx_cm_to_px_h_ratio = img_h / emu_to_cm(self.presentation.slide_height)
+        print(f"PPTX CM to PX W ratio: {pptx_cm_to_px_w_ratio}, PPTX CM to PX H ratio: {pptx_cm_to_px_h_ratio}")
+
         vlm_titles = {'chart_title': [], 'table_title': []}
         for item in vlm_results:
             item_type = item.get('shape_type')
             if item_type == 'slide_title':
-                matched_results['title'] = {'content': item.get('content'), 'bbox_px': item.get('bbox')}
+                matched_results['title'] = {'content': item.get('content'), 'layout': self._bbox_px_2_layout(item.get('bbox'), pptx_cm_to_px_w_ratio, pptx_cm_to_px_h_ratio), 'bbox_px': item.get('bbox')}
             elif item_type == 'conclusion':
-                matched_results['analysis'] = {'content': item.get('content'), 'bbox_px': item.get('bbox')}
+                matched_results['analysis'] = {'content': item.get('content'), 'layout': self._bbox_px_2_layout(item.get('bbox'), pptx_cm_to_px_w_ratio, pptx_cm_to_px_h_ratio), 'bbox_px': item.get('bbox')}
             elif item_type in ['chart_title', 'table_title']:
                 vlm_titles[item_type].append(item)
-
-        pptx_cm_to_px_w_ratio = img_w / emu_to_cm(self.presentation.slide_width)
-        pptx_cm_to_px_h_ratio = img_h / emu_to_cm(self.presentation.slide_height)
 
         for pptx_element in pptx_elements:
             pptx_layout = pptx_element['layout']
@@ -318,6 +328,7 @@ class PptxParser:
             if closest_vlm_title:
                 element_dict['title'] = {
                     'content': closest_vlm_title['content'],
+                    'layout': self._bbox_px_2_layout(closest_vlm_title['bbox'], pptx_cm_to_px_w_ratio, pptx_cm_to_px_h_ratio),
                     'bbox_px': closest_vlm_title['bbox']
                 }
                 element_dict.update(extract_details_from_title(closest_vlm_title['content']))

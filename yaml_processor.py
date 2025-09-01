@@ -125,7 +125,7 @@ class YamlProcessor:
         Returns:
             一个包含所有生成信息的字典。
         """
-        FLAG = True
+        FLAG = False
 
         if FLAG:
             new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
@@ -141,7 +141,7 @@ class YamlProcessor:
 
         eval_yaml = {
             'sql_query': sql_query,
-            # 'tool_call_params': tool_call_params,
+            'tool_call_params': tool_call_params,
             # 'conclusion': conclusion,
         }
 
