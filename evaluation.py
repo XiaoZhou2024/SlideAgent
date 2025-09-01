@@ -13,7 +13,7 @@ from pandas._testing import assert_frame_equal
 from sqlalchemy import create_engine
 
 
-def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_01/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
+def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_05/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
     """
     查找所有生成的YAML文件及其对应的原始Ground Truth YAML文件。
 
@@ -306,29 +306,33 @@ def main():
         gen_sql = extract_sql_from_gen_yaml(gen_path)
         truth_sql = extract_sql_from_yaml(truth_path)
         for i in range(len(gen_sql)):
+            all_sql_count += 1
             try:
                 sql_is_match = compare_sql_execution(engine, gen_sql[i], truth_sql[i])
-            except:
-                sql_is_match =  False
+            except  :
+                sql_is_match = False
             if sql_is_match:
                 sql_match_count += 1
                 print("  -> 结果: ✅ 匹配 (SQL Execution Match)")
             else:
                 print("  -> 结果: ❌ 不匹配(SQL Execution Match)")
 
-        gen_tool_call_params = extract_tool_call_params_from_gen_yaml(gen_path)
-        truth_tool_call_params = extract_tool_call_params_from_yaml(truth_path)
-        for i in range(len(gen_sql)):
-            try:
-                tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
-            except:
-                tool_is_match = False
-            all_sql_count += 1
-            if tool_is_match:
-                tool_match_count += 1
-                print("  -> 结果: ✅ 匹配 (Tool Execution Match)")
-            else:
-                print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
+        print(f"  -> sql数量：{all_sql_count}")
+        print(f"  -> sql匹配数量：{sql_match_count}")
+
+        # gen_tool_call_params = extract_tool_call_params_from_gen_yaml(gen_path)
+        # truth_tool_call_params = extract_tool_call_params_from_yaml(truth_path)
+        # for i in range(len(gen_sql)):
+        #     try:
+        #         tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
+        #     except:
+        #         tool_is_match = False
+        #     all_sql_count += 1
+        #     if tool_is_match:
+        #         tool_match_count += 1
+        #         print("  -> 结果: ✅ 匹配 (Tool Execution Match)")
+        #     else:
+        #         print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
 
     #
     #     gen_conclusion = extract_conclusion_from_yaml(gen_path)
@@ -342,8 +346,6 @@ def main():
     #
     #
     # print("6. 评估结果...")
-    # print(f"  -> sql数量：{all_sql_count}")
-    # print(f"  -> sql匹配数量：{sql_match_count}")
     # print(f"  -> 工具匹配数量：{tool_match_count}")
     # print(f"  -> 结论匹配数量：{conclusions_match_count}")
 
