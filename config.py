@@ -7,5 +7,6 @@ class Config:
     API_KEY = os.getenv("API_KEY", "EMPTY")
     BASE_URL = os.getenv("BASE_URL", "")
     MODEL_NAME = os.getenv("MODEL_NAME", "")
+    DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 
 config = Config()
