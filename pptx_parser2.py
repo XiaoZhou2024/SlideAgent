@@ -261,7 +261,6 @@ class PptxParser:
         base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
         
         vlm_results = _call_vision_model_v2(base64_image)
-        print('vlm_results:', vlm_results)
         if temp_path and os.path.exists(temp_path):
             shutil.rmtree(temp_path)
         
@@ -371,8 +370,9 @@ class PptxParser:
 
         # 步骤 3: 匹配并整合数据
         structured_data = self._match_elements(pptx_elements, vlm_results, img_w, img_h)
-        
-        return structured_data
+
+        template_slide = {"template_slide": structured_data}
+        return template_slide
 
     @staticmethod
     def save_dict_as_yaml(data: Dict, output_path: Path):
