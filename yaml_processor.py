@@ -130,8 +130,8 @@ class YamlProcessor:
         if FLAG:
             new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
             sql_query, data_path = self.generate_sql(parsed_template_structure)
-            # tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
-            # conclusion = self.generate_conclusion(new_data_source, parsed_template_structure, data_path)
+            tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
+            conclusion = self.generate_conclusion(new_data_source, parsed_template_structure, data_path)
         else:
             new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
             sql_query, data_path = self.get_standard_answer_sql(task)

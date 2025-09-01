@@ -66,7 +66,7 @@ class ToolSelector:
                     'price_range_size': 'default',
                 }
             }
-            intent = slide_params['template_slide']['content_elements'][i]['fun_tool']
+            intent = slide_params['template_slide']['content_elements'][i]['title']['content']
             messages = [
                 SystemMessage(content="""
                     你是一个意图提取专家。根据用户的问题，提取用户的关键意图。

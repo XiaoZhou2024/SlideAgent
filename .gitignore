@@ -4,4 +4,5 @@
 # 忽略某个目录
 ReSlide/
 data/
+output/
 .env

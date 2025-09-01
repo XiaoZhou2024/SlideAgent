@@ -137,10 +137,8 @@ def _convert_ppt_to_image(ppt_path: str, slide_number: int, output_folder_path: 
     """将指定 PPT 文件的特定页码转换为图像。"""
     file_name = os.path.splitext(os.path.basename(ppt_path))[0]
     file_path = Path(ppt_path).parent
-    
     temp_pdf_output_path = os.path.join(file_path, f"{file_name}_temp_pdf")
     temp_image_output_path = os.path.join(file_path, f"{file_name}_temp_images")
-    
     os.makedirs(temp_pdf_output_path, exist_ok=True)
     os.makedirs(temp_image_output_path, exist_ok=True)
     
@@ -149,8 +147,13 @@ def _convert_ppt_to_image(ppt_path: str, slide_number: int, output_folder_path: 
         pdf_file_path = os.path.join(temp_pdf_output_path, f"{file_name}.pdf")
         if not os.path.exists(pdf_file_path):
             raise FileNotFoundError(f"PDF 文件转换失败: {pdf_file_path}")
-        
-        images = convert_from_path(pdf_file_path)
+        # images = convert_from_path(pdf_file_path)
+        images = convert_from_path(
+            pdf_file_path,
+            poppler_path=r"C:\poppler-25.07.0\Library\bin",  # 改成你的实际路径
+            fmt="jpeg",  # 或 png
+            dpi=200
+        )
         if not (0 <= slide_number - 1 < len(images)):
             print(f"警告: 页码 {slide_number} 超出范围。")
             return None, None, None, None
@@ -258,6 +261,7 @@ class PptxParser:
         base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
         
         vlm_results = _call_vision_model_v2(base64_image)
+        print('vlm_results:', vlm_results)
         if temp_path and os.path.exists(temp_path):
             shutil.rmtree(temp_path)
         
@@ -369,7 +373,7 @@ class PptxParser:
 
 # --- 使用示例 ---
 if __name__ == "__main__":
-    ppt_file_path = "ReSlide_01\\template-1\\temp\\北京市良乡.pptx"  # 替换为你的PPT文件路径
+    ppt_file_path = "./ReSlide/ReSlide_01/template-1/temp/北京市良乡.pptx"  # 替换为你的PPT文件路径
     output_directory = "./output/"
     
     if not os.path.exists(ppt_file_path):

@@ -10,12 +10,12 @@ def _call_vision_model_v2(base64_image: str) -> List[Dict[str, Any]]:
     调用视觉大模型并解析其JSON输出。
     """
     client = OpenAI(
-        api_key=config.DASHSCOPE_API_KEY,
-        base_url="https://api.siliconflow.cn/v1",
+        api_key=config.API_KEY,
+        base_url=config.BASE_URL,
     )
     try:
         completion = client.chat.completions.create(
-            model="Qwen/Qwen2.5-VL-72B-Instruct",
+            model="qwen25-vl",
             messages=[{
                 "role": "system",
                 "content": [{"type": "text", "text": """

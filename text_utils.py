@@ -59,23 +59,23 @@ def extract_details_from_title(title_content: str) -> Dict[str, Any]:
             "end_time": f"{end_year}-12-31"
         }
         
-    # 2. 添加 block
-    if block:
-        # 与原始YAML格式的 'block' 键匹配
-        info["block"] = block
-        
-    # 3. 推断 intent
-    intent_list = []
-    if "供应" in title_content:
-        intent_list.append("supply_sets")
-    if "成交" in title_content:
-        intent_list.append("trade_sets")
-    if intent_list:
-        info["intent"] = intent_list
-        
-    # 4. 推断 fun_tool
-    # 将解析出的核心内容作为 fun_tool
-    if detail:
-        info["fun_tool"] = detail
+    # # 2. 添加 block
+    # if block:
+    #     # 与原始YAML格式的 'block' 键匹配
+    #     info["block"] = block
+    #
+    # # 3. 推断 intent
+    # intent_list = []
+    # if "供应" in title_content:
+    #     intent_list.append("supply_sets")
+    # if "成交" in title_content:
+    #     intent_list.append("trade_sets")
+    # if intent_list:
+    #     info["intent"] = intent_list
+    #
+    # # 4. 推断 fun_tool
+    # # 将解析出的核心内容作为 fun_tool
+    # if detail:
+    #     info["fun_tool"] = detail
         
     return info
