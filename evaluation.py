@@ -13,7 +13,7 @@ from pandas._testing import assert_frame_equal
 from sqlalchemy import create_engine
 
 
-def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_07/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
+def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_01/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
     """
     查找所有生成的YAML文件及其对应的原始Ground Truth YAML文件。
 
@@ -123,6 +123,26 @@ def extract_sql_from_gen_yaml(yaml_path: Path):
         print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
     return ""
 
+def extract_tool_call_params_from_gen_yaml(yaml_path: Path):
+    """
+    从YAML文件中提取第一条SQL查询语句。
+
+    Args:
+        yaml_path (Path): YAML文件的路径。
+
+    Returns:
+        str: 提取到的SQL查询语句，如果找不到则返回空字符串。
+    """
+    try:
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+
+        return data['tool_call_params']
+
+    except Exception as e:
+        print(f"错误: 读取或解析YAML文件 {yaml_path} 时失败: {e}")
+    return ""
+
 def frames_equal(df1, df2) -> bool:
     try:
         # 列集合必须一致
@@ -174,7 +194,7 @@ def setup_database(conn: sqlite3.Connection):
     conn.commit()
     print("内存数据库已创建并填充虚拟数据。")
 
-def compare_sql_execution(sql_engine, generated_sql: list, ground_truth_sql: list) -> bool:
+def compare_sql_execution(sql_engine, generated_sql: str, ground_truth_sql: str) -> bool:
     """
     执行两个SQL查询并比较它们的结果是否完全相同。
 
@@ -229,10 +249,13 @@ def compare_tools_select(generated_tool_select, ground_truth_tool_select):
     print(ground_truth_tool_select['tool'])
     try:
         tool_equal = tool_dic[generated_tool_select['tool']] == ground_truth_tool_select['tool']
+        print("tool_equal:{}".format(tool_equal))
     except KeyError:
         return False
     area_equal = generated_tool_select['args']['area_range_size'] == ground_truth_tool_select['args']['area_range_size']
     price_equal = generated_tool_select['args']['price_range_size'] == ground_truth_tool_select['args']['price_range_size']
+    print("area_equal:{}".format(area_equal))
+    print("price_equal:{}".format(price_equal))
 
     return tool_equal and area_equal and price_equal
 
@@ -292,21 +315,21 @@ def main():
                 print("  -> 结果: ✅ 匹配 (SQL Execution Match)")
             else:
                 print("  -> 结果: ❌ 不匹配(SQL Execution Match)")
-    #
-    #     gen_tool_call_params = extract_tool_call_params_from_yaml(gen_path)
-    #     truth_tool_call_params = extract_tool_call_params_from_yaml(truth_path)
-    #     for i in range(len(gen_sql)):
-    #         try:
-    #             tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
-    #         except:
-    #             tool_is_match = False
-    #         all_sql_count += 1
-    #         if tool_is_match:
-    #             tool_match_count += 1
-    #             print("  -> 结果: ✅ 匹配 (Tool Execution Match)")
-    #         else:
-    #             print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
-    #
+
+        gen_tool_call_params = extract_tool_call_params_from_gen_yaml(gen_path)
+        truth_tool_call_params = extract_tool_call_params_from_yaml(truth_path)
+        for i in range(len(gen_sql)):
+            try:
+                tool_is_match = compare_tools_select(gen_tool_call_params[i], truth_tool_call_params[i])
+            except:
+                tool_is_match = False
+            all_sql_count += 1
+            if tool_is_match:
+                tool_match_count += 1
+                print("  -> 结果: ✅ 匹配 (Tool Execution Match)")
+            else:
+                print("  -> 结果: ❌ 不匹配(Tool Execution Match)")
+
     #
     #     gen_conclusion = extract_conclusion_from_yaml(gen_path)
     #     truth_conclusion = extract_conclusion_from_yaml(truth_path)

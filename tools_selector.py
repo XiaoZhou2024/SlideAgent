@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from langchain.chat_models import init_chat_model
+from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from data_process_tool import *
 from config import config
@@ -65,16 +66,39 @@ class ToolSelector:
                     'price_range_size': 'default',
                 }
             }
-            intent = slide_params['template_slide']['content_elements'][i]['title']['content']
+            intent = slide_params['template_slide']['content_elements'][i]['fun_tool']
+            messages = [
+                SystemMessage(content="""
+                    你是一个意图提取专家。根据用户的问题，提取用户的关键意图。
+                    参考下面案例:
+                    示例1:
+                    问题: 密云区供应与成交套数及占比
+                    回答: 供应与成交套数及占比
+                    示例2:
+                    问题: 良乡供应与成交趋势
+                    回答: 供应与成交趋势
+                    示例3:
+                    问题: 密云区国祥府房价走势
+                    回答: 房价走势
+                    示例4:
+                    问题: 永丰商品住宅历年套数量
+                    回答: 商品住宅历年套数量
+            """),
+                HumanMessage(content=intent),
+            ]
+            intent = self.model.invoke(messages).content
+            print("intent是:{}".format(intent))
+
             params = {
                 'intent': intent ,
+                'project_name': data_source['project'],
                 'area_range_size':data_source['area_range_size'],
                 'price_range_size':data_source['price_range_size'],
                 "input_path": str(retrieval_path / f"{i}.csv"),
                 "output_path": str(processed_path / f"{i}.xlsx"),
             }
             prompt = (
-                    "请根据下面的参数，选择合适的工具去处理 input_path 对应的数据：\n"
+                    "请根据下面的参数，选择合适的工具去处理 input_path 对应的数据：\n注意：有些参数用不到可以不用使用\n"
                     + json.dumps(params, ensure_ascii=False, indent=2, default=str)
             )
             res = self.agent.invoke({
@@ -82,6 +106,7 @@ class ToolSelector:
                     {"role": "user", "content": prompt}
                 ]
             })
+            print(res)
             ai_msg = next(m for m in res["messages"] if m.type == "ai")
             tool_calls = getattr(ai_msg, "tool_calls", [])
             for call in tool_calls:

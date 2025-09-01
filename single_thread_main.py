@@ -49,7 +49,6 @@ def main():
         print(f"在此文件中找到 {len(tasks)} 个任务。")
 
         for task in tasks:
-            print(task)
             # 为每个任务创建一个处理器实例
             processor = YamlProcessor(task, sql_generator, database_manager, tool_selector, conclusion_generator)
 
