@@ -10,9 +10,9 @@ import base64
 from pathlib import Path
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.enum.chart import XL_CHART_TYPE # 导入图表类型枚举
+from pptx.enum.chart import XL_CHART_TYPE  # 导入图表类型枚举
 from pptx.util import Cm
-from math import sqrt
+from math import sqrt, hypot
 from typing import Dict, List, Any, Tuple
 from pptxtopdf import convert
 from pdf2image import convert_from_path
@@ -21,10 +21,12 @@ from pdf2image import convert_from_path
 from text_utils import extract_details_from_title
 from pptx_analyser import _call_vision_model_v2
 
+
 # --- 辅助函数 ---
 def emu_to_cm(emu: float) -> float:
     """将EMU（英国测量单位）转换为厘米，并保留两位小数。"""
     return round(emu / 360000.0, 2)
+
 
 def get_shape_layout(shape) -> Dict[str, float]:
     """从shape对象提取布局信息（位置和尺寸），单位为厘米。"""
@@ -35,9 +37,11 @@ def get_shape_layout(shape) -> Dict[str, float]:
         "height": emu_to_cm(shape.height),
     }
 
+
 def get_shape_center(shape) -> Tuple[float, float]:
     """计算形状中心的坐标（EMU单位）。"""
     return shape.left + shape.width / 2, shape.top + shape.height / 2
+
 
 def table_shape_to_df(shape) -> "pd.DataFrame | None":
     """将表格形状提取为 DataFrame。"""
@@ -115,11 +119,11 @@ def chart_shape_to_df(shape) -> "pd.DataFrame | None":
 
     # 构造 DataFrame
     if categories is None:
-        categories = [f"cat_{i+1}" for i in range(max_len)]
+        categories = [f"cat_{i + 1}" for i in range(max_len)]
     else:
         # 类别数量与最长系列长度不一致时，做长度对齐
         if len(categories) < max_len:
-            categories = categories + [f"cat_{i+1}" for i in range(len(categories), max_len)]
+            categories = categories + [f"cat_{i + 1}" for i in range(len(categories), max_len)]
         elif len(categories) > max_len:
             categories = categories[:max_len]
 
@@ -133,6 +137,7 @@ def chart_shape_to_df(shape) -> "pd.DataFrame | None":
         df[series_name] = vals
     return df
 
+
 def _convert_ppt_to_image(ppt_path: str, slide_number: int, output_folder_path: str):
     """将指定 PPT 文件的特定页码转换为图像。"""
     file_name = os.path.splitext(os.path.basename(ppt_path))[0]
@@ -141,7 +146,7 @@ def _convert_ppt_to_image(ppt_path: str, slide_number: int, output_folder_path: 
     temp_image_output_path = os.path.join(file_path, f"{file_name}_temp_images")
     os.makedirs(temp_pdf_output_path, exist_ok=True)
     os.makedirs(temp_image_output_path, exist_ok=True)
-    
+
     try:
         convert(input_path=ppt_path, output_folder_path=temp_pdf_output_path)
         pdf_file_path = os.path.join(temp_pdf_output_path, f"{file_name}.pdf")
@@ -173,6 +178,7 @@ class PptxParser:
     """
     一个用于解析PPTX文件幻灯片并提取其结构化信息的类。
     """
+
     def __init__(self, pptx_path: Path):
         """
         初始化解析器。
@@ -193,20 +199,21 @@ class PptxParser:
         """
         if shape.shape_type == MSO_SHAPE_TYPE.TABLE:
             return "table"
-        
+
         if shape.shape_type == MSO_SHAPE_TYPE.CHART:
             if hasattr(shape, "chart"):
                 chart_type = shape.chart.chart_type
                 # 柱状图和条形图
                 if chart_type in (
-                    XL_CHART_TYPE.COLUMN_CLUSTERED, XL_CHART_TYPE.COLUMN_STACKED, XL_CHART_TYPE.COLUMN_STACKED_100,
-                    XL_CHART_TYPE.BAR_CLUSTERED, XL_CHART_TYPE.BAR_STACKED, XL_CHART_TYPE.BAR_STACKED_100
+                        XL_CHART_TYPE.COLUMN_CLUSTERED, XL_CHART_TYPE.COLUMN_STACKED, XL_CHART_TYPE.COLUMN_STACKED_100,
+                        XL_CHART_TYPE.BAR_CLUSTERED, XL_CHART_TYPE.BAR_STACKED, XL_CHART_TYPE.BAR_STACKED_100
                 ):
                     return "chart-bar"
                 # 折线图
                 elif chart_type in (
-                    XL_CHART_TYPE.LINE, XL_CHART_TYPE.LINE_MARKERS, XL_CHART_TYPE.LINE_STACKED, 
-                    XL_CHART_TYPE.LINE_STACKED_100, XL_CHART_TYPE.LINE_MARKERS_STACKED, XL_CHART_TYPE.LINE_MARKERS_STACKED_100
+                        XL_CHART_TYPE.LINE, XL_CHART_TYPE.LINE_MARKERS, XL_CHART_TYPE.LINE_STACKED,
+                        XL_CHART_TYPE.LINE_STACKED_100, XL_CHART_TYPE.LINE_MARKERS_STACKED,
+                        XL_CHART_TYPE.LINE_MARKERS_STACKED_100
                 ):
                     return "chart-line"
                 else:
@@ -216,34 +223,51 @@ class PptxParser:
 
         if shape.has_text_frame and shape.text.strip():
             return "text"
-            
+
         return "other"
-    
-    def _extract_pptx_elements(self, slide) -> List[Dict[str, Any]]:
+
+    def _extract_pptx_elements(self, slide) -> Dict[str, Any]:
         """
         从单个幻灯片中提取表格和图表数据及pptx坐标。
         """
         content_elements = []
-        for shape in slide.shapes:
+        for idx, shape in enumerate(slide.shapes):
             shape_type = self._get_shape_type(shape)
+            if shape_type == "text":
+                content_elements.append({
+                    "id": idx,
+                    "type": 'textBox',
+                    "text": shape.text.strip(),
+                    'role': '',
+                    "layout": get_shape_layout(shape)
+                })
             if shape_type == "table":
                 df = table_shape_to_df(shape)
                 if df is not None and not df.empty:
                     content_elements.append({
-                        "shape_type": "table",
+                        "id": idx,
+                        "type": 'table',
+                        'role': '',
+                        "layout": get_shape_layout(shape),
                         "data": df.to_dict(orient='records'),
-                        "layout": get_shape_layout(shape)
                     })
             elif "chart" in shape_type:
                 df = chart_shape_to_df(shape)
                 if df is not None and not df.empty:
                     content_elements.append({
-                        "shape_type": shape_type,
+                        "id": idx,
+                        "type": 'chart',
+                        'role': '',
+                        "layout": get_shape_layout(shape),
                         "data": df.to_dict(orient='records'),
-                        "layout": get_shape_layout(shape)
                     })
-        return content_elements
-    
+        template_slide = {
+                "slide_size": {"width": emu_to_cm(self.presentation.slide_width),
+                               "height": emu_to_cm(self.presentation.slide_height)},
+                "elements": content_elements
+        }
+        return template_slide
+
     def _get_vlm_analysis(self, slide_idx: int) -> Tuple[List[Dict[str, Any]], int, int]:
         """
         将幻灯片转换为图像并调用 VLM 获取文本和位置信息。
@@ -255,116 +279,86 @@ class PptxParser:
         )
         if not img:
             return [], 0, 0
-        
+
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
         base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        
+
         vlm_results = _call_vision_model_v2(base64_image)
         if temp_path and os.path.exists(temp_path):
             shutil.rmtree(temp_path)
-        
+
         return vlm_results, img_w, img_h
-    def _bbox_px_2_layout(self, bbox: list, pptx_cm_to_px_w_ratio: float, pptx_cm_to_px_h_ratio: float)-> dict:
+
+    def _bbox_px_2_layout(self, bbox: list, pptx_cm_to_px_w_ratio: float, pptx_cm_to_px_h_ratio: float) -> dict:
         return {
             "x": round(bbox[0] / pptx_cm_to_px_w_ratio, 2),
             "y": round(bbox[1] / pptx_cm_to_px_h_ratio, 2),
-            "width": round((bbox[2]-bbox[0]) / pptx_cm_to_px_w_ratio, 2),
-            "height": round((bbox[3]-bbox[1]) / pptx_cm_to_px_h_ratio, 2),
+            "width": round((bbox[2] - bbox[0]) / pptx_cm_to_px_w_ratio, 2),
+            "height": round((bbox[3] - bbox[1]) / pptx_cm_to_px_h_ratio, 2),
         }
 
+    def _nearest_point(self, point, points):
+        """
+        point: (x, y)
+        points: [(x1, y1), (x2, y2), ...]
+        return: (最近点, 距离, 索引)
+        """
+        px, py = point
+        best = None
+        best_dist = float('inf')
+        best_idx = -1
 
+        for i, (x, y) in enumerate(points):
+            # 欧氏距离
+            d = hypot(x - px, y - py)
+            if d < best_dist:
+                best_dist = d
+                best = (x, y)
+                best_idx = i
+        return  best_idx
 
-    def _match_elements(self, pptx_elements: List[Dict[str, Any]], vlm_results: List[Dict[str, Any]], img_w: int, img_h: int) -> Dict[str, Any]:
+    def _match_elements(self, pptx_elements: Dict[str, Any], vlm_results: List[Dict[str, Any]], img_w: int,
+                        img_h: int) -> Dict[str, Any]:
         """
         将 pptx 提取的元素与 VLM 识别的文本进行匹配和整合。
         """
-        matched_results: Dict[str, Any] = {
-            "slide_size": {"width": emu_to_cm(self.presentation.slide_width), "height": emu_to_cm(self.presentation.slide_height)},
-            "title": None,
-            "analysis": None,
-            "content_elements": []
-        }
-
         pptx_cm_to_px_w_ratio = img_w / emu_to_cm(self.presentation.slide_width)
         pptx_cm_to_px_h_ratio = img_h / emu_to_cm(self.presentation.slide_height)
-        print(f"PPTX CM to PX W ratio: {pptx_cm_to_px_w_ratio}, PPTX CM to PX H ratio: {pptx_cm_to_px_h_ratio}")
+        elements = pptx_elements.get('elements', [])
+        points = []
+        for element in elements:
+            points.append((element.get('layout').get('x'), element.get('layout').get('y')))
 
-        vlm_titles = {'chart_title': [], 'table_title': []}
+        ### 遍历 VLM 识别的元素
         for item in vlm_results:
-            item_type = item.get('shape_type')
-            if item_type == 'slide_title':
-                matched_results['title'] = {'content': item.get('content'), 'layout': self._bbox_px_2_layout(item.get('bbox'), pptx_cm_to_px_w_ratio, pptx_cm_to_px_h_ratio), 'bbox_px': item.get('bbox')}
-            elif item_type == 'conclusion':
-                matched_results['analysis'] = {'content': item.get('content'), 'layout': self._bbox_px_2_layout(item.get('bbox'), pptx_cm_to_px_w_ratio, pptx_cm_to_px_h_ratio), 'bbox_px': item.get('bbox')}
-            elif item_type in ['chart_title', 'table_title']:
-                vlm_titles[item_type].append(item)
+            item_point = (round(item["bbox"][0] / pptx_cm_to_px_w_ratio, 2), round(item["bbox"][1] / pptx_cm_to_px_h_ratio, 2))
+            nearest_point_idx = self._nearest_point(item_point, points)
+            elements[nearest_point_idx]['role'] = item['shape_type']
 
-        for pptx_element in pptx_elements:
-            pptx_layout = pptx_element['layout']
-            pptx_center_x_px = pptx_layout['x'] * pptx_cm_to_px_w_ratio + pptx_layout['width'] * pptx_cm_to_px_w_ratio / 2
-            pptx_center_y_px = pptx_layout['y'] * pptx_cm_to_px_h_ratio + pptx_layout['height'] * pptx_cm_to_px_h_ratio / 2
-            
-            closest_vlm_title = None
-            min_distance = float('inf')
-            search_list = vlm_titles.get(pptx_element['shape_type'] + '_title', [])
-            
-            for vlm_title in search_list:
-                vlm_bbox = vlm_title['bbox']
-                vlm_center_x_px = (vlm_bbox[0] + vlm_bbox[2]) / 2
-                vlm_center_y_px = (vlm_bbox[1] + vlm_bbox[3]) / 2
-                distance = sqrt((pptx_center_x_px - vlm_center_x_px)**2 + (pptx_center_y_px - vlm_center_y_px)**2)
-                
-                if distance < min_distance:
-                    min_distance = distance
-                    closest_vlm_title = vlm_title
+        template_slide = {
+                "slide_size": pptx_elements.get('slide_size'),
+                "elements": elements
+        }
 
-            element_dict = {
-                "shape_type": pptx_element['shape_type'],
-                "data": pptx_element['data'],
-                "layout": pptx_layout,
-            }
-            if closest_vlm_title:
-                element_dict['title'] = {
-                    'content': closest_vlm_title['content'],
-                    'layout': self._bbox_px_2_layout(closest_vlm_title['bbox'], pptx_cm_to_px_w_ratio, pptx_cm_to_px_h_ratio),
-                    'bbox_px': closest_vlm_title['bbox']
-                }
-                element_dict.update(extract_details_from_title(closest_vlm_title['content']))
-                vlm_titles[pptx_element['shape_type'] + '_title'].remove(closest_vlm_title)
-            
-            matched_results['content_elements'].append(element_dict)
+        return template_slide
 
-        for title_list in vlm_titles.values():
-            for title in title_list:
-                unmatched_dict = {
-                    "shape_type": "unmatched_title",
-                    "title": {
-                        "content": title.get('content'),
-                        "bbox_px": title.get('bbox')
-                    },
-                    "data": None,
-                }
-                unmatched_dict.update(extract_details_from_title(title.get('content')))
-                matched_results['content_elements'].append(unmatched_dict)
-        
-        return matched_results
-    
     def parse_slide_vlm(self, slide_idx: int = 0) -> Dict[str, Any]:
         """
         使用 VLM 解析幻灯片结构，并与 pptx 数据进行匹配。
         """
         if slide_idx >= len(self.presentation.slides):
             raise IndexError(f"幻灯片索引 {slide_idx} 超出范围。")
-        
+
         slide = self.presentation.slides[slide_idx]
-        
+
         # 步骤 1: 从 pptx 提取元素
         pptx_elements = self._extract_pptx_elements(slide)
-        
+        print(f"从幻灯片提取元素: {pptx_elements}")
+
         # 步骤 2: 调用 VLM 进行分析
         vlm_results, img_w, img_h = self._get_vlm_analysis(slide_idx)
-        
+        print(f"VLM 分析结果: {vlm_results}")
         if not vlm_results:
             return {"error": "无法生成幻灯片图片或调用VLM"}
 
@@ -382,23 +376,24 @@ class PptxParser:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True, indent=2, sort_keys=False)
         print(f"成功将提取的结构保存到: {output_path}")
 
+
 # --- 使用示例 ---
 if __name__ == "__main__":
     ppt_file_path = "./ReSlide/ReSlide_01/template-1/temp/北京市良乡.pptx"  # 替换为你的PPT文件路径
     output_directory = "./output/"
-    
+
     if not os.path.exists(ppt_file_path):
         print(f"错误：测试文件 {ppt_file_path} 不存在。请修改为正确的路径。")
     else:
         parser = PptxParser(Path(ppt_file_path))
-        slide_to_analyze = 0 # 幻灯片索引，从0开始
-        
+        slide_to_analyze = 0  # 幻灯片索引，从0开始
+
         # 运行 VLM 解析并匹配
         try:
             structured_data = parser.parse_slide_vlm(slide_to_analyze)
             print("--- 幻灯片结构化解析结果 ---")
             print(json.dumps(structured_data, indent=2, ensure_ascii=False))
-            
+
             # 您也可以选择保存为 YAML 文件
             parser.save_dict_as_yaml(structured_data, Path(output_directory, "slide_analysis.yaml"))
         except Exception as e:

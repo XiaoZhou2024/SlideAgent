@@ -13,7 +13,7 @@ from pandas._testing import assert_frame_equal
 from sqlalchemy import create_engine
 
 
-def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_05/template-*/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
+def find_yaml_pairs(base_pattern: str = "ReSlide/ReSlide_01/template-1/**/*_generated.yaml") -> List[Tuple[Path, Path]]:
     """
     查找所有生成的YAML文件及其对应的原始Ground Truth YAML文件。
 
@@ -206,13 +206,12 @@ def compare_sql_execution(sql_engine, generated_sql: str, ground_truth_sql: str)
     Returns:
         bool: 如果结果相同则返回True，否则返回False。
     """
-
     if not generated_sql or not ground_truth_sql:
         return False # 如果任一SQL为空，则视为不匹配
 
     with sql_engine.connect() as conn:
         try:
-            print(f"正在处理SQL：{generated_sql}")
+            print(f"正在处理生成SQL：{generated_sql}")
             generated_results = pd.read_sql(generated_sql, conn)
         except Exception as e:
             print(f"  -> 执行生成的generated_sql时出错: {e}")

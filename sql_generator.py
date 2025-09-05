@@ -2,6 +2,8 @@
 
 import json
 from typing import Any, Dict
+
+import pandas as pd
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from config import config
@@ -32,15 +34,14 @@ class SqlGenerator:
     def _create_sql_prompt_template(self) -> ChatPromptTemplate:
         """创建用于生成SQL的Prompt模板。"""
         return ChatPromptTemplate.from_messages([
-            ("system", """你是一个SQL专家，根据用户的问题生成一个有效的SQL查询语句。
+            ("system", """你是一个SQL专家，根据用户的问题和slide_params生成一个有效的SQL查询语句。
         数据库表结构信息如下:
         - 表名: public.new_house, public.resale_house
-        - 字段: supply_sets, trade_sets, dim_area, dim_price, dim_unit_price, city_name, district_name, block_name, project_name, date_code
+        - 字段: date_code, supply_sets, trade_sets, dim_area, dim_price, dim_unit_price, city_name, district_name, block_name, project_name
 
         要求:
-        1. 只生成SQL查询语句本身，不要包含任何解释或代码块标记(```)。
-        2. 根据问题中的城市、区域、板块和年份来构建WHERE子句。
-        3. 日期范围应为年初到年末，例如2021年应为 '2021-01-01' 到 '2021-12-31'。
+        1. WHERE子句构建: 确保包含城市、区域、板块、项目名和日期的精确匹配条件，并将年份转换为年初到年末的完整日期范围（如2021年对应'2021-01-01'到'2021-12-31'）。
+        2. 输出要求: 仅返回SQL查询语句本身，不包含任何解释或代码块标记(```)。
 
         示例1:
         user_question: 基于该模板，请生成2020-2022年北京市怀柔区怀柔区板块的分析报告.
@@ -54,7 +55,7 @@ class SqlGenerator:
         示例2:
         user_question: 基于该模板，请生成2020-2022年北京市海淀区永丰板块的分析报告, 将面积段间隔设置为15㎡。
         slide_params:{{
-            'table_name': '2020-2022年良乡供应与成交趋势', 
+            'table_name': '2020-2022年首钢供应与成交趋势', 
             'row_headers': ['0-20㎡', '20-40㎡', '40-60㎡', '60-80㎡', '80-100㎡', '100-120㎡', '120-140㎡', '140-160㎡', '160-180㎡', '180-200㎡', '200-220㎡', '220-240㎡', '240-260㎡', '260-280㎡', '280-300㎡', '≥300㎡'], 
             'column_headers': ['2020供应套数', '2020成交套数', '2021供应套数', '2021成交套数', '2022供应套数', '2022成交套数']
         }}
@@ -260,33 +261,73 @@ class SqlGenerator:
         """
         根据用户问题生成数据源JSON对象。
 
-        Args:
-            user_question (str): 用户的报告需求或问题。
-
-        Returns:
-            Dict[str, Any]: 代表数据源的Python字典。
+        - 在解析失败时，最多重试 2 次（总共 3 次尝试）。
+        - 自动去除 ```json ... ``` 代码块包裹。
+        - 若最终仍失败，抛出 JSONDecodeError。
         """
-        chain = self.datasource_prompt_template | self.model
-        response = chain.invoke({"user_question": user_question})
-        
-        json_string = response.content.strip()
-        if json_string.startswith("```json"):
-            json_string = json_string[7:]
-        if json_string.endswith("```"):
-            json_string = json_string[:-3]
-            
-        try:
-            return json.loads(json_string)
-        except json.JSONDecodeError:
-            print(f"错误: LLM返回的JSON格式无效: {json_string}")
-            raise
+        max_retries = 2  # 额外重试次数
+        attempt = 0
+        while attempt <= max_retries:
+            try:
+                chain = self.datasource_prompt_template | self.model
+                response = chain.invoke({"user_question": user_question})
+                json_string = response.content.strip()
+                if json_string.startswith("```json"):
+                    json_string = json_string[7:]
+                if json_string.endswith("```"):
+                    json_string = json_string[:-3]
+                return json.loads(json_string)
+
+            except json.JSONDecodeError as e:
+                attempt += 1
+                if attempt <= max_retries:
+                    print(f"警告: 第 {attempt} 次解析失败，正在重试... 原始返回: {json_string}")
+                else:
+                    print(f"错误: LLM返回的JSON格式无效（已重试 {max_retries} 次仍失败）。原始返回: {json_string}")
+                    raise
+            except Exception as e:
+                # 其他异常（如调用链失败）也进行重试
+                attempt += 1
+                if attempt <= max_retries:
+                    print(f"警告: 第 {attempt} 次调用失败，正在重试... 错误: {e}")
+                else:
+                    print(f"错误: 调用链执行失败（已重试 {max_retries} 次仍失败）。错误: {e}")
+                    raise
 
     def process_slide_params(self, slide_params: Dict[str, Any]):
         """
         这块代码暂时只实现了功能，后续会优化
         """
         title = slide_params['title']['content']
-        df = slide_params['data']
+        data = slide_params['data']
+
+        # 兼容 list / dict -> DataFrame
+        if not hasattr(data, 'columns'):
+            if isinstance(data, list):
+                if data and isinstance(data[0], dict):
+                    df = pd.DataFrame(data)
+                else:
+                    cols = slide_params.get('columns')
+                    df = pd.DataFrame(data, columns=cols) if cols else pd.DataFrame(data)
+            elif isinstance(data, dict):
+                rows = data.get('rows')
+                cols = data.get('columns')
+                if rows is not None:
+                    df = pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame(rows)
+                else:
+                    inner = data.get('data')
+                    if isinstance(inner, list) and inner and isinstance(inner[0], dict):
+                        df = pd.DataFrame(inner)
+                    else:
+                        df = pd.DataFrame(data)  # 最后一搏
+            else:
+                raise TypeError(f"data 类型不受支持: {type(data)}")
+        else:
+            df = data
+
+        if df.shape[1] < 1:
+            raise ValueError("期望至少包含 1 列数据")
+
         second_col_name = df.columns[0]
         df2 = df.set_index(second_col_name)
 

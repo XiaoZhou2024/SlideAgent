@@ -4,16 +4,31 @@ from datetime import datetime
 import yaml
 import copy
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Callable, Optional, Mapping
 
 from conclusion_generator import ConclusionGenerator
 from database_manager import DatabaseManager
 # 从其他模块导入依赖
 from file_utils import ReportTask, load_yaml_file
 from pptx_parser2 import PptxParser
+# from pptx_parser import PptxParser
 from sql_generator import SqlGenerator
 from tools_selector import ToolSelector
-
+from data_process_tool import (
+    supply_and_sales_counts_and_share,
+    analyze_supply_sales_trend,
+    get_supply_sales_counts_stats,
+    compute_area_price_cross_stats,
+    compute_area_num_stats,
+    compute_price_num_stats,
+    compute_market_capacity,
+    compute_annual_traded_units,
+    compute_annual_traded_area,
+    compute_resale_house_total_and_avg_price,
+    compute_resale_house_transaction_count_distribution,
+    compute_resale_house_avg_price_distribution,
+    get_recent_transaction_trend,
+)
 
 
 class YamlProcessor:
@@ -63,25 +78,37 @@ class YamlProcessor:
         return path.resolve()
 
     def parse_ppt_and_requirements_params(self):
-        print("1. 解析用户意图生成 'data_source'...")
-        new_data_source = self.sql_generator.generate_datasource_json(self.task.query)
-
+        print("1. 解析用户意图生成 'query_filters'...")
+        query_filters = self.sql_generator.generate_datasource_json(self.task.query)
+        print(self.task.query)
+        print(query_filters)
         print(f"2. 解析PPT模板意图: {self.task.pptx_template_path.name}")
         # parsed_template_structure = self.pptx_parser.parse_slide(slide_idx=0)
         parsed_template_structure = self.pptx_parser.parse_slide_vlm(slide_idx=0)
-        return new_data_source, parsed_template_structure
+        print("-"*60)
+        print(parsed_template_structure)
+        return query_filters, parsed_template_structure
 
     def generate_sql(self, parsed_template_structure: Dict[str, Any]):
         print("3. 根据用户需求与ppt解析生成SQL查询语句,接着检索数据存储到data目录  ...")
-        '''sql_query的数据类型是list'''
-        sql_query = self.sql_generator.generate_sql(user_question=self.task.query, slide_params = parsed_template_structure)
-        print(f"  -> 生成的SQL: {sql_query}")
         data_path = self.create_timestamped_folder()
-        try:
-            self.database_manager.execute_query_save_data(sql_query, data_path)
-        except Exception as e:
-            print(f"  -> 错误: {e}")
-        return sql_query, data_path
+        max_retries = 2  # 额外重试次数
+        attempt = 0
+        while attempt <= max_retries:
+            try:
+                '''sql_query的数据类型是list'''
+                sql_query = self.sql_generator.generate_sql(user_question = self.task.query, slide_params = parsed_template_structure)
+                self.database_manager.execute_query_save_data(sql_query, data_path)
+                print(f"  -> 生成的SQL: {sql_query}")
+                return sql_query, data_path
+            except Exception as e:
+                attempt += 1
+                if attempt <= max_retries:
+                    print(f"警告: 第 {attempt} 次调用失败，正在重试... 错误: {e}")
+                else:
+                    print(f"错误: 调用链执行失败（已重试 {max_retries} 次仍失败）。错误: {e}")
+                    return '', data_path
+
 
     def get_standard_answer_sql(self, task: ReportTask):
         with open(task.ground_truth_yaml_path, "r", encoding="utf-8") as f:
@@ -98,6 +125,82 @@ class YamlProcessor:
         except Exception as e:
             print(f"  -> 错误: {e}")
         return sql_query, data_path
+
+    def _count_csv_files(self, dir_path: str | Path) -> int:
+        p = Path(dir_path)
+        return sum(1 for _ in p.glob("*.csv"))
+    def run_with_optional(
+            self,
+            func: Callable[..., Any],
+            data_path: str,
+            project: Any,
+            area_range_size: Any,
+            price_range_size: Any,
+    ) -> Any:
+        """
+        根据传入的可选参数构造调用，只把存在的参数传给目标函数。
+        defaults 用于补齐未提供的值（可选）。
+        """
+        base_path = Path(data_path)
+        retrieval_path = base_path / "retrieval"
+        processed_path = base_path / "processed"
+        processed_path.mkdir(parents=True, exist_ok=True)
+        input_path = str(retrieval_path / "0.csv")
+        output_path = str(processed_path / "0.xlsx")
+
+        payload = {}
+
+        # 组装调用参数：仅传“存在的”参数
+        if project != 'default':
+            payload["project"] = project
+        if area_range_size != 'default':
+            payload["area_range_size"] = area_range_size
+        if price_range_size != 'default':
+            payload["price_range_size"] = price_range_size
+
+        return func(input_path = input_path, output_path = output_path, **payload)
+
+    def get_standard_answer_tools(self, task: ReportTask, data_path):
+        ##这块代码后续优化逻辑
+        tool_dic = {
+            '供应与成交套数及占比': supply_and_sales_counts_and_share,
+            '供应与成交趋势': analyze_supply_sales_trend,
+            '供应与成交套数统计': get_supply_sales_counts_stats,
+            '面积-总价交叉分析': compute_area_price_cross_stats,
+            '面积段房源数量统计': compute_area_num_stats,
+            '价格段房源数量统计': compute_price_num_stats,
+            '二手房面积-总价交叉分析': compute_area_price_cross_stats,
+            '二手房面积段房源数量统计': compute_area_num_stats,
+            '二手房价格段房源数量统计': compute_price_num_stats,
+            '商品住宅历年市场容量': compute_market_capacity,
+            '商品住宅历年套数量': compute_annual_traded_units,
+            '商品住宅历年面积量': compute_annual_traded_area,
+            '二手房成交套数及均价统计': compute_resale_house_total_and_avg_price,
+            '二手房成交套数分布': compute_resale_house_transaction_count_distribution,
+            '二手房成交均价分布': compute_resale_house_avg_price_distribution,
+            '小区房价走势': get_recent_transaction_trend,
+        }
+        with open(task.ground_truth_yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        conclusion = data.get('output_slide', {}).get('analysis',{}).get('content')
+        print("正确结论是：", conclusion)
+
+        elements = data.get('output_slide', {}).get('content_elements', [])
+        data_source = data.get('data_source', {})
+        fun_tool_list = []
+        for element in elements:
+            fun_tool_list.append({
+                'tool': element['fun_tool'],
+                'project': data_source['project'],
+                'area_range_size': data_source['area_range_size'],
+                'price_range_size': data_source['price_range_size']
+            })
+            self.run_with_optional(tool_dic[element['fun_tool']], data_path, data_source['project'], data_source['area_range_size'], data_source['price_range_size'])
+            break
+        print(f"  -> fun_tool: {fun_tool_list}")
+
+        return fun_tool_list
 
     def generate_tool_call_params(self, new_data_source: Dict, parsed_template_structure: Dict[str, Any], data_path: Path):
         print("4. 给定用户需求与ppt意图自动调用工具  ...")
@@ -127,33 +230,50 @@ class YamlProcessor:
         Returns:
             一个包含所有生成信息的字典。
         """
-        FLAG = False
+        FLAG = 'Sql_only'
 
-        if FLAG:
+        if FLAG == 'Sql_only':
+            try:
+                query_filters, parsed_template_structure = self.parse_ppt_and_requirements_params()
+            except Exception as e:
+                print(f"  -> 错误: {e}")
+                return {
+                    'query_filters': '',
+                    'parsed_template_structure': '',
+                }
+
+            # try:
+            #     sql_query, data_path = self.generate_sql(parsed_template_structure)
+            # except Exception as e:
+            #     print(f"  -> 错误: {e}")
+            #     return {
+            #         'sql_query': ''
+            #     }
+
+            eval_yaml = {
+                'sql_query': 'sql_query',
+            }
+
+        elif FLAG == 'Con_only':
             new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
             sql_query, data_path = self.generate_sql(parsed_template_structure)
             tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
             conclusion = self.generate_conclusion(new_data_source, parsed_template_structure, data_path)
-        else:
-            new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
+        elif FLAG == 'test':
+            try:
+                new_data_source, parsed_template_structure = self.parse_ppt_and_requirements_params()
+            except Exception as e:
+                raise ValueError(f"Failed to parse PPTX: {e}")
             sql_query, data_path = self.get_standard_answer_sql(task)
-            tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
-
+            # tool_call_params = self.generate_tool_call_params(new_data_source, parsed_template_structure, data_path)
+            fun_tool_list = self.get_standard_answer_tools(task, data_path)
+            conclusion = self.generate_conclusion(new_data_source, parsed_template_structure, data_path)
 
 
         eval_yaml = {
-            'sql_query': sql_query,
-            'tool_call_params': tool_call_params,
-            # 'conclusion': conclusion,
+            'query_filters': query_filters,
+            'parsed_template_structure': parsed_template_structure,
         }
-
-
-        # generated_yaml = {
-        #     'query': self.task.query,
-        #     'data_source': new_data_source,  # 使用LLM生成的数据源
-        #     'template_slide': parsed_template_structure.get('template_slide'), # 使用解析出的结构
-        #     'output_slide': new_output_slide
-        # }
         return eval_yaml
 
     def save_to_file(self, data: Dict[str, Any]):

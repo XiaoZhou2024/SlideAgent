@@ -2,6 +2,8 @@
 
 import os
 import concurrent.futures
+
+import pythoncom
 from dotenv import load_dotenv
 from typing import Optional
 
@@ -18,6 +20,7 @@ def process_task_wrapper(task: ReportTask, sql_generator: SqlGenerator,database_
     封装单个任务处理逻辑的函数，用于并发执行。
     返回 True 表示成功，False 表示失败。
     """
+    pythoncom.CoInitialize()
     try:
         # 为每个任务创建一个处理器实例
         processor = YamlProcessor(task, sql_generator, database_manager, tool_selector, conclusion_generator)
@@ -79,7 +82,7 @@ def main():
     error_count = 0
 
     # 4. 使用线程池并发处理所有任务
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         # 提交所有任务到线程池
         future_to_task = {executor.submit(process_task_wrapper, task, sql_generator, database_manager, tool_selector, conclusion_generator): task for task in all_tasks}
         

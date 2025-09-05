@@ -60,26 +60,6 @@ def main():
 
             success_count += 1
 
-            # try:
-            #     # 为每个任务创建一个处理器实例
-            #     processor = YamlProcessor(task, sql_generator, database_manager, tool_selector, conclusion_generator)
-            #
-            #     # 执行处理并生成最终的YAML数据
-            #     generated_data = processor.process_and_generate()
-            #
-            #     # 保存到文件
-            #     processor.save_to_file(generated_data)
-            #
-            #     success_count += 1
-            # except Exception as e:
-            #     print(f"❌ 处理任务时发生严重错误: {task.query[:50]}... | 错误: {e}")
-            #     error_count += 1
-            #     import traceback
-            #     traceback.print_exc()
-    #
-    # print(f"\n{'='*25} 批量处理完成！ {'='*25}")
-    # print(f"✅ 成功生成: {success_count} 个YAML文件")
-    # print(f"❌ 失败: {error_count} 个任务")
 
 if __name__ == "__main__":
     main()
