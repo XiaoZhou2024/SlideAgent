@@ -1,0 +1,251 @@
+ 你需要参考提供的模板数据（template_data）和模板结论（template_conclusion）,为新的数据（data）生成相应的结论（conclusion）。
+             请严格遵循以下步骤，确保输出专业、简洁且与数据高度匹配：
+             1.数据理解：仔细分析模板数据的结构，包括关键变量（如地点、时间、数字指标、趋势描述等），并识别模板结论的生成逻辑，例如如何基于数据突出市场特征、比较变化或总结洞见。
+              正确认知并统一使用房地产专业术语：
+                -供应与交付数量之和最多的面积段称为 core supply-demand area；
+                -面积大于等于 140㎡ 且供应与交付数量之和最多的面积段称为 改善户型（upgraded units）
+             2.信息替换与适应：针对新数据，逐一映射并准确替换模板结论中的关键元素，包括地点（如“该区域”或“该小区”的表述用法）、数字指标（如面积、价格、成交量）、趋势描述（如增长率或占比）。
+               如果新数据引入新变量（如不同户型分布或市场动态），需相应调整以保持逻辑一致性，同时保留模板的整体叙述风格和专业定义。
+             3.结论生成: 确保生成的新结论在保持原有模板结论逻辑结构的同时，与新数据完全一致，并以清晰、专业的语言呈现，不要增加额外的表述。
+             4.涉及百分比时，一律不用小数，按数据计算结果直接舍弃小数点后的数字（不四舍五入）。例如：计算结果为 23.8%，在结论中写为23%。
+             5. 地点名称规范化：
+               - 保持与模板结论一致的地点命名方式
+               - 如果模板结论中的地点名不包含城市前缀（如"Dougezhuang-Heizhuanghu"而非"Beijing Dougezhuang-Heizhuanghu"），则生成的结论也不应添加城市前缀
+               - 严格按照模板结论的地点表述格式，不要自行添加行政区划前缀
+               - 示例：
+                 * 模板使用 "Dongba" → 新结论使用 "Mentougou New Town"（不写 "Beijing Mentougou New Town"）
+                 * 模板使用 "Dashi" → 新结论使用 "Zhongluotan Town"（不写 "Guangzhou Zhongluotan Town"）
+            Example1:
+            template_data:
+                2021-2023 Supply and Transaction Unit Statistics in Beijing's Dougezhuang-Heizhuanghu
+                    Supply Count (Sets)	Deliv. Count (Sets)
+                0-20m²	136	18
+                20-40m²	18	0
+                40-60m²	15	21
+                60-80m²	122	264
+                80-100m²	230	206
+                100-120m²	136	216
+                120-140m²	57	193
+                140-160m²	8	120
+                160-180m²	58	107
+                180-200m²	87	68
+                200-220m²	21	26
+                220-240m²	0	14
+                240-260m²	28	7
+                260-280m²	9	28
+                280-300m²	0	8
+                ≥300m²	70	101
+            template_conclusion:
+            From 2021-2023, Dougezhuang-Heizhuanghu's core supply-demand area was 80-100m², with upgraded units centered on 160-180m².
+
+            data:
+                2020-2022 Supply and Transaction Unit Statistics in Beijing's Beiqijia
+                    supply_counts	trade_counts
+                0-20m²	136	18
+                20-40m²	18	0
+                40-60m²	15	21
+                60-80m²	122	264
+                80-100m²	230	206
+                100-120m²	136	216
+                120-140m²	57	193
+                140-160m²	8	120
+                160-180m²	58	107
+                180-200m²	87	68
+                200-220m²	21	26
+                220-240m²	0	14
+                240-260m²	28	7
+                260-280m²	9	28
+                280-300m²	0	8
+                ≥300m²	70	101
+            conclusion:
+            From 2020-2022, Beiqijia's core supply-demand area was 80-100m², with upgraded units centered on ≥300m².
+
+            Example2:
+            template_data:
+                2021-2023 Supply and Transaction Unit Statistics in Beijing's Dongba
+                Inv. Count	Trans. Cases
+            0-30m²	246	109
+            30-60m²	348	484
+            60-90m²	594	1629
+            90-120m²	50	246
+            120-150m²	2	225
+            150-180m²	88	114
+            180-210m²	37	45
+            210-240m²	77	83
+            240-270m²	76	100
+            270-300m²	33	21
+            300-330m²	41	58
+            330-360m²	0	0
+            360-390m²	0	0
+            390-420m²	0	5
+            420-450m²	2	25
+            ≥450m²	0	6
+            template_conclusion:
+            From 2021-2023, Dongba's core supply-demand area was 60-90m², with upgraded units centered on 150-180m².
+
+            data:
+                2020-2022 Supply and Transaction Unit Statistics in Beijing's Mentougou New Town
+                Inv. Count	Trans. Cases
+            0-30m²	641	426
+            30-60m²	42	177
+            60-90m²	623	1674
+            90-120m²	1522	1529
+            120-150m²	665	683
+            150-180m²	0	22
+            180-210m²	93	36
+            210-240m²	0	0
+            240-270m²	0	6
+            conclusion:
+            From 2020-2022, Mentougou New Town's core supply-demand area was 90-120m², with upgraded units centered on 180-210m².
+
+            Example3:
+            template_data:
+                Guangzhou Dashi Resale House: Overview of Historical Delivery Metrics (2020-2024)
+                year	Trans. Count	House Price	Bldg. Area
+                2020	336	30702	29146
+                2021	310	34434	29533
+                2022	201	32603	19396
+                2023	331	31203	34095
+                2024	368	26241	39116
+            template_conclusion:
+           From 2020 to 2024, the number of resale house transactions in this area increased from 336 units to 368 units, with a cumulative increase of 32 units, representing increased of 9%.
+
+            data:
+                Beijing Huitian - Dongxiaokou Resale House: Overview of Historical Delivery Metrics (2020-2024)
+                year	Trans. Count	House Price	Bldg. Area
+                2020	251	11843	25014
+                2021	223	11792	24713
+                2022	206	10980	22622
+                2023	282	9489	31789
+                2024	397	7524	44766
+            conclusion:
+            From 2020 to 2024, the number of resale house transactions in this area increased from 251 units to 397 units, with a cumulative increase of 146 units, representing increased of 58%.
+
+
+            Example4:
+            template_data:
+                Beijing Liangxiang Historical Capacity Summary Statistics (2020-2024)
+                year	supply_dim_area	supply_counts	trade_dim_area	trade_counts	avg_unit_price
+                2020	99069	1066	103807	1007	34766
+                2021	72439	953	137951	1644	34986
+                2022	140439	1958	93059	882	38151
+                2023	85119	1311	258910	3004	33892
+                2024	164463	1620	252665	3271	30682
+            template_conclusion:
+            From 2020 to 2024, Liangxiang’s traded area increased 143% from 103807m² to 252665m², and the average price also decreased 11% from 34,766 to 30,682 yuan/m².
+
+            data:
+                Guangzhou Zhongluotan Town Historical Capacity Summary Statistics (2020-2024)
+                year	supply_dim_area	supply_counts	trade_dim_area	trade_counts	avg_unit_price
+                2020	108064	1147	140837	1333	39968
+                2021	219126	2191	167480	1733	47284
+                2022	395062	3697	197026	2010	46740
+                2023	193996	1655	237924	2268	42541
+                2024	103231	878	107898	978	39654
+            conclusion:
+            From 2020 to 2024, Zhongluotan Town’s traded area decreased 23% from 140837m² to 107898m², and the average price also decreased 0.8% from 39,968 to 39,654 yuan/m².
+
+
+            Example5:
+            template_data:
+                Beijing Miyun District Guoxiang Mansion Monthly Average Price Trend Analysis, Jan-Jun 2024
+                        House Price
+                2024-01	25344
+                2024-02	26108
+                2024-03	25635
+                2024-04	25085
+                2024-05	25920
+                2024-06	26289
+            template_conclusion:
+            During in 2024(Jan-Jun), the average transaction price of apartments in this community went from 25,344 yuan/m² upward to 26,289 yuan/m², with a cumulative increase of 945 yuan/m².
+
+            data:
+            Guangzhou Hanxi Chimelong Poly Yue Mansion Monthly Average Price Trend Analysis, Jan-Jun 2024
+                    House Price
+            2024-01	58350
+            2024-02	61121
+            2024-03	48260
+            2024-04	42313
+            2024-05	39190
+            2024-06	43011
+            conclusion:
+            During in 2024(Jan-Jun), the average transaction price of apartments in this community went from 58,350 yuan/m² downward to 43,011 yuan/m², with a cumulative decrease of 15,339 yuan/m².
+
+
+            Example6:
+            template_data:
+            2020-2022 Guangzhou Asia Games Town Resale House Price Segment Distribution Statistics
+                Price Seg. Stats
+            0.0-1.0 M	39
+            1.0-2.0 M	116
+            2.0-3.0 M	784
+            3.0-4.0 M	177
+            4.0-5.0 M	47
+            5.0-6.0 M	6
+            6.0-7.0 M	0
+            7.0-8.0 M	1
+            template_conclusion:
+            Mainstream types concentrate in 2.0-3.0 M segments, totaling 784 units.
+
+            data:
+            2021-2023 Guangzhou Laohuangpu Resale House Price Segment Distribution Statistics
+                Price Seg. Stats
+            0.0-1.0 M	96
+            1.0-2.0 M	120
+            2.0-3.0 M	157
+            3.0-4.0 M	183
+            4.0-5.0 M	93
+            5.0-6.0 M	31
+            6.0-7.0 M	7
+            7.0-8.0 M	3
+            8.0-9.0 M	1
+            9.0-10.0 M	1
+            conclusion:
+            Mainstream types concentrate in 3.0-4.0 M segments, totaling 183 units.
+
+            Example7:
+            template_data:
+            2021-2023 Beijing Daxing(Other) Area and Total Price Cross Statistics
+            price_area	0-20m²	20-40m²	40-60m²	60-80m²	80-100m²	100-120m²	120-140m²	140-160m²	160-180m²	180-200m²	200-220m²	220-240m²	240-260m²	260-280m²	280-300m²	300-320m²	≥320m²	total
+            0.0-1.0 M	240	179	35	1	0	0	0	0	0	0	0	0	0	0	0	0	0	455
+            1.0-2.0 M	0	0	704	227	2	1	1	0	0	0	0	0	0	0	0	0	0	935
+            2.0-3.0 M	0	0	29	606	743	92	9	0	0	0	0	0	0	0	0	0	0	1479
+            3.0-4.0 M	0	0	0	33	718	71	149	62	8	3	0	1	0	0	0	0	0	1045
+            4.0-5.0 M	0	0	0	0	14	11	3	37	73	40	4	28	5	0	0	1	0	216
+            5.0-6.0 M	0	0	0	0	0	0	0	6	77	17	6	46	12	26	15	15	2	222
+            6.0-7.0 M	0	0	0	0	0	0	0	0	4	19	1	43	11	41	0	21	0	140
+            7.0-8.0 M	0	0	0	0	0	0	0	0	0	0	4	5	7	18	20	39	0	93
+            8.0-9.0 M	0	0	0	0	0	0	0	0	0	0	1	21	0	39	1	11	3	76
+            9.0-10.0 M	0	0	0	0	0	0	0	0	0	0	0	3	9	1	4	0	22	39
+            10.0-11.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	17	4	6	6	33
+            11.0-12.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	2	1	3
+            12.0-13.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	3	3	6
+            14.0-15.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	1
+            ≥15.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	1
+            total	240	179	768	867	1477	175	162	105	162	79	16	147	44	142	44	98	39	4744
+            template_conclusion:
+            From 2021 to 2023, a total of 4744 units were transacted, with the 2.0-3.0 M price segment and 80-100m² area segment having the highest transactions at 743 units.
+
+            data:
+            2020-2022 Beijing Liangxiang Area and Total Price Cross Statistics
+            price_area	0-20m²	20-40m²	40-60m²	60-80m²	80-100m²	100-120m²	120-140m²	140-160m²	160-180m²	180-200m²	200-220m²	220-240m²	260-280m²	580-600m²	600-620m²	620-640m²	≥640m²	total
+            0.0-1.0 M	1159	464	261	5	0	0	0	0	0	0	0	0	0	0	0	0	0	1889
+            1.0-2.0 M	0	0	41	15	11	6	2	0	0	0	0	0	0	0	0	0	0	75
+            2.0-3.0 M	0	0	110	1215	667	2	0	3	4	3	0	0	0	0	0	0	0	2004
+            3.0-4.0 M	0	0	0	491	2608	135	0	0	0	0	1	1	0	0	0	0	0	3236
+            4.0-5.0 M	0	0	0	0	884	724	55	0	0	0	0	0	0	0	0	0	0	1663
+            5.0-6.0 M	0	0	0	0	0	97	318	66	0	0	0	0	0	0	0	0	0	481
+            6.0-7.0 M	0	0	0	0	0	0	18	157	0	0	0	0	0	0	0	0	0	175
+            7.0-8.0 M	0	0	0	0	0	0	2	0	31	0	0	0	0	0	0	0	0	33
+            8.0-9.0 M	0	0	0	0	0	0	2	0	9	15	0	0	0	0	0	0	0	26
+            9.0-10.0 M	0	0	0	0	0	0	0	0	23	23	0	13	0	0	0	0	0	59
+            10.0-11.0 M	0	0	0	0	0	0	0	0	4	21	0	3	49	0	0	0	0	77
+            11.0-12.0 M	0	0	0	0	0	0	0	0	0	1	1	0	6	0	0	0	0	8
+            12.0-13.0 M	0	0	0	0	0	0	0	0	0	1	1	0	0	0	0	0	0	2
+            15.0-16.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	2	0	0	0	2
+            ≥16.0 M	0	0	0	0	0	0	0	0	0	0	0	0	0	0	2	2	18	22
+            total	1159	464	412	1726	4170	964	397	226	71	64	3	17	55	2	2	2	18	9752
+            conclusion:
+            From 2020 to 2022, a total of 9752 units were transacted, with the 3.0-4.0 M price segment and 80-100m² area segment having the highest transactions at 2608 units.
+
+            Do not output the thinking process or internal monologue. Do not use <think> tags.

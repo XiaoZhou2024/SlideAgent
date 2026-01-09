@@ -1,0 +1,108 @@
+  请执行以下SQL查询生成任务，并严格按“仅输出合法 JSON 数组”的要求返回结果：
+            任务要求：
+            1) 解析参数：
+               - 从 slide_params 中提取表名（connection.table）、选择列（select_columns）和过滤条件（filters）。
+            2) 构建 WHERE 子句：
+               - 条件字段：city、block、project、date_code（由 start_date/end_date 生成）。
+               - 忽略值为 default 的条件（不要出现在 WHERE 中）。
+               - 非 default 的字符串值（如城市/区域/板块/项目名）用单引号括起来，例如 city = 'Beijing'。
+               - 日期范围：若提供 start_date 和/或 end_date，则使用：
+                   - 同时提供：date_code >= 'YYYY-MM-DD' AND date_code <= 'YYYY-MM-DD'
+                   - 仅 start_date：date_code >= 'YYYY-MM-DD'
+                   - 仅 end_date：date_code <= 'YYYY-MM-DD'
+            3) 生成 SQL：
+               - 格式：`SELECT [columns] FROM public.[table] WHERE [conditions]`
+            4) **输出格式（最高优先级）：**
+               - 结果必须是合法的 JSON 数组：`["SQL语句"]`
+               - **结尾检查**：输出的最后三个字符必须严格是 `'"]`（即：单引号、双引号、中括号）。
+               - 不要包含 Markdown (```
+
+            **错误修正指南：**
+            - ❌ 错误：`... <= '2024-12-31"]` (日期缺少右单引号)
+            - ✅ 正确：`... <= '2024-12-31'"]` (日期有单引号，JSON有双引号)
+            Example1：
+            slide_params:{{
+              'connection': {{'table': 'beijing_new_house'}},
+              'select_columns': ['supply_sets', 'trade_sets', 'dim_area'],
+              'filters': {{
+                'city': Beijing,
+                'block': Huairou District,
+                'project': default,
+                'start_date': 2020-01-01,
+                'end_date': 2022-12-31,
+                'area_range_size': default,
+                'price_range_size': default
+              }}
+            }}
+            输出：
+            ["SELECT supply_sets, trade_sets, dim_area FROM public.beijing_new_house WHERE city = 'Beijing' AND block = 'Huairou District' AND date_code >= '2020-01-01' AND date_code <= '2022-12-31'"]
+
+            Example2：
+            slide_params:{{
+              'connection': {{'table': 'shenzhen_resale_house'}},
+              'select_columns': ['date_code', 'supply_sets', 'trade_sets', 'dim_area', 'dim_unit_price'],
+              'filters': {{
+                'city': Shenzhen,
+                'block': Nanshan CBD,
+                'project': default,
+                'start_date': 2021-01-01,
+                'end_date': 2023-12-31,
+                'area_range_size': default,
+                'price_range_size': default
+              }}
+            }}
+            输出：
+            ["SELECT date_code, supply_sets, trade_sets, dim_area, dim_unit_price FROM public.shenzhen_resale_house WHERE city = 'Shenzhen' AND block = 'Nanshan CBD' AND date_code >= '2021-01-01' AND date_code <= '2023-12-31'"]
+
+            Example3：
+            slide_params:{{
+              'connection': {{'table': 'guangzhou_new_house'}},
+              'select_columns': ['date_code', 'dim_unit_price'],
+              'filters': {{
+                'city': Guangzhou,
+                'block': Huangge Town,
+                'project': Times Tianyi Garden,
+                'start_date': 2024-01-01,
+                'end_date': 2024-06-30,
+                'area_range_size': default,
+                'price_range_size': default
+              }}
+            }}
+            输出：
+            ["SELECT date_code, dim_unit_price FROM public.guangzhou_new_house WHERE city = 'Guangzhou' AND block = 'Huangge Town' AND project = 'Times Tianyi Garden' AND date_code >= '2024-01-01' AND date_code <= '2024-06-30'"]
+
+            Example4：
+            slide_params:{{
+              'connection': {{'table': 'guangzhou_resale_house'}},
+              'select_columns': ['dim_area', 'dim_unit_price', 'date_code', 'trade_sets'],
+              'filters': {{
+                'city': Guangzhou,
+                'block': Jingang Avenue,
+                'project': default,
+                'start_date': 2020-01-01,
+                'end_date': 2024-12-31,
+                'area_range_size': default,
+                'price_range_size': default
+              }}
+            }}
+            输出：
+            ["SELECT dim_area, dim_unit_price, date_code, trade_sets FROM public.guangzhou_resale_house WHERE city = 'Guangzhou' AND block = 'Jingang Avenue' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'"]
+
+            Example5：
+            slide_params:{{
+              'connection': {{'table': 'beijing_new_house'}},
+              'select_columns': ['date_code', 'supply_sets', 'trade_sets', 'dim_area'],
+              'filters': {{
+                'city': Guangzhou,
+                'block': Changlingju,
+                'project': default,
+                'start_date': 2020-01-01,
+                'end_date': 2024-12-31,
+                'area_range_size': default,
+                'price_range_size': default
+              }}
+            }}
+            输出：
+            ["SELECT date_code, supply_sets, trade_sets, dim_area FROM public.guangzhou_new_house WHERE city = 'Guangzhou' AND block = 'Changlingju' AND date_code >= '2020-01-01' AND date_code <= '2024-12-31'"]
+
+        Do not output the thinking process or internal monologue. Do not use <think> tags.

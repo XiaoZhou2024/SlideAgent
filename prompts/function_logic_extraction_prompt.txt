@@ -1,0 +1,220 @@
+ 请执行以下表格理解任务，并严格按“仅输出合法 JSON 数组”的要求返回结果：
+            注意：在解析 `table_data` (List[Dict]) 时，必须基于字典的 **Keys (键名集合)** 来判定表格类型，切勿被 Values (键值) 误导：
+                       * **判定为 `constraint-field` (转置型/横向时间)**：
+               * **核心判据**：检查字典的 **Keys (键名)** 集合。
+               * **规则**：如果 **Keys 中包含具体的年份数字或日期字符串** (例如 Key 是 "2020", "2021", "2024-06")，则判定为 `constraint-field`。
+               * *逻辑*：Keys 是时间，说明列头是时间轴，每一行代表一个指标在不同时间的值。
+               * *示例*：`{{'metric': 'Total Price', '2020': '100', '2021': '120'}}`
+                 -> Keys 包含 '2020', '2021' -> **constraint-field**。
+
+             * **判定为 `field-constraint` (标准型/纵向时间)**：
+               * **核心判据**：检查字典的 **Keys (键名)** 集合。
+               * **规则**：如果 **Keys 中完全不包含具体的年份数字**，全是字段名称 (如 "year", "price", "volume")，且具体的时间点 (如 '2020') 仅作为 "year" 字段的 **Value (值)** 出现，则判定为 `field-constraint`。
+               * *逻辑*：Keys 是字段名，说明列头是指标，每一行代表一个特定时间点的数据。
+               * *示例*：`{{'year': '2020', 'price': '100', 'volume': '50'}}`
+                 -> Keys 是 ['year', 'price', 'volume'] (无年份Key) -> Value 是 '2020' -> **field-constraint**。
+
+           任务要求：
+            1) 解析参数：
+               - 从table_caption和table_data提取表格类型、 header_info (表头及约束详情)、数据源字段、统计方式将提取的参数整理成一个四元组，并以 JSON 数组的形式返回。
+            2) 四元组参数说明：
+               - 表格类型：用于反映表格类型
+                 - 类型：["field-constraint", 'constraint-field', "cross-constraint"]
+                   其中：field-constraint为字段-约束类型（如：列头是字段，行头是约束范围，一般都是字段约束型），constraint-field为约束-字段类型（如：列头是具体约束范围，行头是字段），cross-constraint为交叉约束类型（如：行头和列头均表示不同的限制条件，交叉点为统计值）
+               - header_info (表头及约束详情)
+                 提取表格的关键 Headers（行头或列头），并解析其隐含的约束条件：
+                 - **headers**: 必须**原样提取**输入数据（JSON Key 或 表格首行字符串）中的文本。
+                    - *正确示例*：输入 Key 为 `supply_counts` -> 输出 `supply_counts`
+                    - *错误示例*：输入 Key 为 `supply_counts` -> 输出 `Supply Counts` (禁止！)
+                 - **constraint_detail**: 解析约束逻辑，包含：
+                     - type: 约束类型，枚举值只有 ["area_range" (面积段), "price_range" (价格段), "year", "month"]。
+                     - template: 参数化模板，例如 "{{}}-{{}}M" 用于动态区间。
+                     - start_boundary: 起始边界值。
+                     - end_boundary: 中止边界值
+                     - step:  步长超参数，如0-20m²,step为20; 0-10m²,step为10; 0.75-1.5 M,step为0.75; 1.00-2.00 M,step为1;。
+                     - 对于 "cross-constraint" 类型，该字段应为一个包含两个约束对象的数组。
+              - 数据源字段：根据表格内容推断对应的底层数据库字段。 (最关键)
+                必须对每一个非约束性 Header 进行分析。**请严格按照以下优先级顺序匹配，一旦触发高优先级规则，立即停止后续匹配**：
+                    **【优先级 0：分布统计强制修正 (Distribution Check) - 极其重要】**
+                    *   **触发场景**：检查表格的**行头(Row Index)** 或 **列头(Column Header)** 是否属于 **区间类约束**（即 `area_range` 或 `price_range`）。
+                    *   **强制映射逻辑**：
+                        *   如果上下文是 **面积段 (`area_range`)** 分布：
+                            *   Header 是计数类 (Count, Sets, Num, Stats) -> **必须输出列表** `["dim_area", "supply_sets"]` (供应侧) 或 `["dim_area", "trade_sets"]` (成交侧)。
+                            *   *错误示范*：仅输出 `"trade_sets"` (缺少维度信息)。
+                        *   如果上下文是 **价格段 (`price_range`)** 分布：
+                            *   Header 是计数类 (Count, Sets, Num, Stats) -> **必须输出列表** `["dim_price", "supply_sets"]` (供应侧) 或 `["dim_price", "trade_sets"]` (成交侧)。
+                            *   *错误示范*：仅输出 `"trade_sets"` (缺少维度信息)。
+
+                    **【优先级 A：单价 (Unit Price)】**
+                    *   关键词: "Unit Price", "Price/m²", "Avg Price", "House Price" (数值<20万)。
+                    *   字段: `"dim_unit_price"`
+
+                     **【优先级 B：明确的套数/笔数 (Explicit Counts/Sets/Volume)】**
+                     *   **规则核心**：优先识别表示“数量/套数”的词汇，防止被误判为面积。
+                     *   关键词：
+                         *   "Count", "Sets", "Units", "Num", "Frequency", "Nos"。
+                         *   **"Volume" / "Vol" 特殊规则**：
+                             *   如果 Header 包含 "Area" 或 "Sq.m" -> 转【优先级 C】(视为面积)。
+                             *   如果 Header 包含 "Supply Volume", "Mkt Supply Vol", "Trans Volume" 且**不含** "Area" -> **视为套数**。
+                     *   字段:
+                         *   含 "Supply", "Launch", "New" -> `"supply_sets"`
+                         *   含 "Trade", "Trans", "Sales", "Sold", "Deal", "Deliv" (交付) -> `"trade_sets"`
+                         *   若不含上述动词 (如仅 "Volume")，默认归为 `"trade_sets"`。
+
+                     **【优先级 C：面积/体量 (Area)】**
+                     *   关键词: "Area", "Sq.m", "m²", "Size", "Space"。
+                     *   **归属判断 (Supply vs Trade)**：
+                         *   若 Header 含 "Supply", "New", "Launch" -> `["dim_area", "supply_sets"]`
+                         *   若 Header 含 "Trade", "Trans", "Sales", "Sold", "Deliv", "Int." (Internal) -> `["dim_area", "trade_sets"]`
+                         *   **中性词默认规则**：若 Header 仅为 "Area", "Usable Area", "Int. Area" 且无法通过上述关键词判断：
+                             *   检查 `table_caption`：若标题含 "Supply" 且不含 "Trade/Trans"，归为 Supply；否则**默认归为 Trade** (成交侧)。
+                     *   输出格式: 必须为列表形式，如 `["dim_area", "trade_sets"]`。
+
+                    **【优先级 D：金额 (Amount/Value)】**
+                    *   关键词: "Amount", "Total Price", "Sales", "Value", "Revenue"。
+                    *   字段: 供应->`["dim_price", "supply_sets"]`; 成交->`["dim_price", "trade_sets"]` (均为列表)。
+
+                    **【优先级 E：套数/笔数 (Counts/Sets) - 仅在未触发规则0时生效】**
+                    *   关键词: "Count", "Sets", "Units", "Num", "Frequency"。
+                    *   字段: 供应->`"supply_sets"`; 成交->`"trade_sets"` (注意：这是**字符串**)。
+              - 统计方式
+                 - 字段数据类型判断：
+                   1. 字段为字符串类型 (如 `"supply_sets"`, `"trade_sets"`) -> 统计方式为 `"count"` (即使 Header 写的是 Volume)。
+                   2. 字段为列表类型 (如 `["dim_area", "..."]`, `["dim_price", "..."]`) -> 统计方式为 `"sum"`。
+                      *   **例外**：如果该字段是由【优先级 0：分布统计】生成的列表，且对应的 Header 是计数类含义 -> 统计方式为 `"count"`。
+                   3. 字段为 `"dim_unit_price"` -> 统计方式为 `"mean"`。
+            3) 输出格式（极其重要）：
+               - 仅输出合法 JSON 数组，数组元素为四元组。
+               - 不要输出除 JSON 以外的任何内容：不要前后缀文字、不要解释、不要 Markdown 代码块标记、不要多余换行。
+
+            示例1：
+            table_caption:2020-2022 Supply and Transaction Unit Statistics in Beijing's Insurance Industry Park
+            table_data:
+                    Supply Count	Trans. Count
+            0-20m²	39	0
+            20-40m²	38	0
+            40-60m²	9	1
+            60-80m²	1	0
+            80-100m²	1	46
+            100-120m²	0	0
+            120-140m²	0	0
+            140-160m²	0	4
+            160-180m²	0	5
+            180-200m²	0	8
+            200-220m²	39	24
+            220-240m²	19	14
+            240-260m²	3	4
+            260-280m²	34	6
+            280-300m²	23	1
+            ≥300m²	361	121
+
+            输出：
+            ["field-constraint", [["Supply Count", "Trans. Count"],["area_range", '{{}}-{{}}m²', '0', '300', 20]], [["dim_area", "supply_sets"], ["dim_area", "trade_sets"]],["count","count"]]
+
+            示例2：
+            table_caption:2020-2022 Beijing Beiqijia Total Area Segment Distribution Statistics
+                	Area Dist.
+            0-20m²	754
+            20-40m²	287
+            40-60m²	193
+            60-80m²	570
+            80-100m²	2147
+            100-120m²	803
+            120-140m²	667
+            140-160m²	78
+            160-180m²	0
+            180-200m²	0
+            200-220m²	5
+            220-240m²	0
+            240-260m²	11
+            260-280m²	11
+            280-300m²	1
+            ≥300m²	5
+            输出：
+            ["field-constraint", [["Area Dist."],["area_range", '{{}}-{{}}m²', '0', '300', 20]], ["dim_area", "trade_sets"],["count"]]
+
+
+            示例3：
+            table_caption:2021-2023 Beijing Beiqijia Area and Total Price Cross Statistics
+            table_data:
+            price_area	0-15m²	15-30m²	30-45m²	45-60m²	60-75m²	75-90m²	90-105m²	105-120m²	120-135m²
+            0.0-0.75 M	1256	668	242	9	3	1	0	0	0
+            0.75-1.5 M	0	0	54	161	13	0	0	0	0
+            1.5-2.25 M	0	0	0	0	21	54	1	0	0
+            2.25-3.0 M	0	0	12	74	0	334	2	0	5
+            3.0-3.75 M	0	0	0	65	281	81	0	106	0
+            3.75-4.5 M	0	0	0	0	341	413	6	0	0
+            4.5-5.25 M	0	0	0	0	0	460	447	0	0
+            5.25-6.0 M	0	0	0	0	5	16	827	5	23
+            6.0-6.75 M	0	0	0	0	0	1	16	469	194
+            6.75-7.5 M	0	0	0	0	0	0	0	33	51
+            7.5-8.25 M	0	0	0	0	0	0	0	0	65
+            8.25-9.0 M	0	0	0	0	0	0	3	0	2
+            9.0-9.75 M	0	0	0	0	0	0	2	0	0
+            9.75-10.5 M	0	0	0	0	0	0	2	0	1
+            ≥10.5 M	0	0	0	0	0	0	3	0	0
+            total	1256	668	308	309	664	1360	1309	613	341
+            输出：
+            ["cross-constraint", [["price_range", '{{}}-{{}}M', '0', '10.5', 0.75], ["area_range", '{{}}-{{}}m²', '0', '135', 15]], ["dim_price", "dim_area"], ["count"]]
+
+            示例4：
+            Guangzhou Guanggang New Town Resale House: Overview of Historical Delivery Metrics (2020-2024)
+            table_data:
+            year	            2020	2021	2022	2023	2024
+            Trans. Units (Sets)	44	71	76	164	345
+            Unit House Price	40504	49719	49028	47136	38174
+            Usable Area      	3871	7062	7198	15882	33523
+            输出：
+            ["constraint-field",[["Trans. Units (Sets)", "Unit House Price", "Usable Area"], ["year", '-', '2020', '2024', 1]], ["trade_sets", "dim_unit_price", ["dim_area", "trade_sets"]],["count","mean","sum"]]
+
+            示例5：
+            table_caption:Guangzhou Guangzhou South Railway Station Historical Capacity Summary Statistics (2020-2024)
+            table_data:
+            year	Net Supply Area	   New Launch Units	  Ttl Trade Area    Sales Count	    Unit Area Price
+            2020	60997	                   621	            23585	         239	         29031
+            2021	218050	                   2229	            138626	         1381	         37962
+            2022	132091	                   1365	            77574	         829	          37912
+            2023	72993	                   587	            76295	         740	          36086
+            2024	25373	                   218	            66473	          727	          33415
+            输出：
+            ["field-constraint",[["Net Supply Area", "New Launch Units", "Ttl Trade Area", "Sales Count", "Unit Area Price"], ["year", '-', '2020', '2024', 1]], [["dim_area", "supply_sets"], "supply_sets", ["dim_area", "trade_sets"],"trade_sets","dim_unit_price"],["sum","count","sum","count","mean"]]
+
+            示例6：
+            table_caption:Beijing Liangxiang: Historical Supply and Transaction Area Statistics (2020-2024)
+            table_data:
+            year   Ttl Salable Area     	Ttl Trans. Area
+            2020	99069	103807
+            2021	72439	137951
+            2022	140439	93059
+            2023	85119	258910
+            2024	164463	252665
+            输出：
+            ["field-constraint", [["Ttl Salable Area", "Ttl Trans. Area"], ["year", '-', '2020', '2024', 1]], [["dim_area", "supply_sets"], ["dim_area", "trade_sets"]], ["sum", "sum"]]
+
+            示例7：
+            table_caption:Beijing Miyun District Guoxiang Mansion Monthly Average Price Trend Analysis, Jan-Jun 2024
+            table_data:
+                    House Price
+            2024-01	25344
+            2024-02	26108
+            2024-03	25635
+            2024-04	25085
+            2024-05	25920
+            2024-06	26289
+            输出：
+            ["field-constraint",[["House Price"], ["month", '-', '2024-01', '2024-06', '1']], ["dim_unit_price"], ["mean"]]
+
+            示例8：
+            Guangzhou Guanggang New Town Resale House: Overview of Historical Delivery Metrics (2020-2024)
+            table_data:
+            year	Trans. Units (Sets)	Unit House Price Usable Area
+            2020	149	18232	12749
+            2021	126	21426	10433
+            2022	57	21262	4836
+            2023	97	17865	8477
+            2024	123	14189	11281
+            输出：
+            ["field-constraint",[["Trans. Units (Sets)", "Unit House Price", "Usable Area"], ["year", '-', '2020', '2024', 1]], ["trade_sets", "dim_unit_price", ["dim_area", "trade_sets"]],["count","mean","sum"]]
+
+
+            仅当你完全确定输出是合法 JSON 时再回复。Do not output the thinking process or internal monologue. Do not use <think> tags.

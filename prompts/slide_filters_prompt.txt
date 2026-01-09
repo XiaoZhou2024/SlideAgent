@@ -1,0 +1,231 @@
+        请执行以下数据提取任务。根据给定的 `slide_params`（包括标题 `caption`、行表头 `row_headers` 和列表头 `column_headers`），生成一个符合要求的 JSON 对象。具体步骤如下：
+
+          ### 核心任务步骤
+
+            1. **解析参数信息**：仔细分析提供的 `slide_params`。
+
+            2. **提取关键要素**：
+               - **表归属 (Table affiliation)**：
+                 - **默认规则**：默认为 `new_house` (新房)。
+                 - **二手房触发词**：如果 `caption` 包含 "Resale", "Second-hand"，必须使用 `{{city}}_resale_house`。
+                 - **新房触发词**：如果 `caption` 包含 "New House"，或无明确房产类型，使用 `{{city}}_new_house`。
+                 - **可用表名**：`['beijing_new_house', 'beijing_resale_house', 'guangzhou_new_house', 'guangzhou_resale_house', 'shenzhen_new_house', 'shenzhen_resale_house']`。
+
+               - **板块 (Block)**：精确提取与清洗。
+              **提取原则：完整保留专有名词 (Full Entity Extraction)**
+                 请严格保留标题中表示地点的完整短语，**禁止**执行任何“删除后缀”的操作，除非该后缀是单纯的城市名（如 ", Beijing"）。
+
+                 1. **保留后缀 (Keep Suffixes)**:
+                    - 遇到 "Area", "Zone", "District", "Plate", "Region" 等词，**必须保留**在 Block 名称中。
+                    - Correct: "Wangcheng Area" -> "Wangcheng Area"
+                    - Wrong: "Wangcheng Area" -> "Wangcheng" (丢失精度)
+                    - Correct: "Junigangshan Luxury Residential Area" -> "Junigangshan Luxury Residential Area"
+
+                 2. **保留复合词组 (Keep Compound Nouns)**:
+                    - 对于 "High-Tech Zone", "Creative Zone", "Railway Station", "CBD" 等组合，视为一个不可分割的整体。
+                    - Correct: "Guanlan High-Tech Zone" -> "Guanlan High-Tech Zone"
+                    - Correct: "Guangzhou South Railway Station" -> "Guangzhou South Railway Station"
+
+                 3. **保留修饰与标点 (Keep Qualifiers)**:
+                    - 保留括号内的说明、逗号分隔的并列词。
+                    - Correct: "Daxing(Other)" -> "Daxing(Other)"
+                    - Correct: "Zengjiang, Licheng" -> "Zengjiang, Licheng"
+                    - Correct: "Luohu Central Business District (CBD)" -> "Luohu Central Business District (CBD)"
+
+               - **时间范围 (Time range)**：从标题中提取 `start_date` 和 `end_date`。
+                - 如果 caption 说 "2020-2022"，则为 2020-01-01 到 2022-12-31。
+                - 如果 row_headers 是具体的月度（如 "2024-01" 到 "2024-06"），则精确到该月最后一天。
+                - 针对错误案例的修正：不要根据当前时间推断，严格基于输入文本。如果 caption 是 "2021-2023"，绝不要输出 2020-2022。
+                - **格式**：YYYY-MM-DD。
+                - **检索字段 (Select_columns) - 严格判定逻辑**：
+                    字段包括：`['date_code', 'dim_area', 'dim_price', 'dim_unit_price', 'trade_sets', 'supply_sets']`。
+                    **核心原则：Do NOT guess. Only select columns strictly required by the row/column headers.**
+                    (不要猜测。只选择行/列表头明确需要展示的数据维度。)
+
+                     1. **date_code (时间轴)**:
+                        - **判定条件**：仅当 `row_headers` 或 `column_headers` 中**显式包含**具体的时间点（如 "2020", "2024-01", "Jan", "Q1"）时，才添加 `date_code`。
+                        - **禁止**：如果 `row_headers` 是面积段（"0-20m²"）或价格段，即使 caption 提到了 "2020-2022"，也**绝对不要**添加 `date_code`（这属于筛选条件，不是展示维度）。
+
+                     2. **dim_area (面积维度)**:
+                        - **判定条件**：仅当 `row_headers` 或 `column_headers` 中**显式包含**面积区间（如 "0-20m²", "Area Range"）或具体的面积数值时，才添加 `dim_area`。
+                        - **修正**：仅仅出现 "Trade Sets" 或 "Supply Sets" **不**足以触发 `dim_area`，除非表头明确要求按“面积”分组。
+
+                     3. **dim_unit_price (单价)**:
+                        - **判定条件**：表头包含 "Price", "Avg Price", "/m²", "Value"。
+
+                     4. **dim_price (总价)**:
+                        - **判定条件**：表头显式包含总价段（如 "0-2M", "Total Price Segment"）。注意区分单价（Unit Price）和总价（Price）。
+
+                     5. **trade_sets (成交套数)**:
+                        - **判定条件**：表头包含 "Trade", "Sold", "Deal", "Transaction", "Sets" (在成交语境下)。
+
+                     6. **supply_sets (供应套数)**:
+                        - **判定条件**：表头包含 "Supply", "Launch", "New List", "Listing"。
+
+                     **最终校验 (Final Check)**:
+                     - 如果 row_headers 是 ["2020", "2021"]，column_headers 是 ["Price"] -> select: ['date_code', 'dim_unit_price'] (不要加 trade_sets, 不要加 dim_area)。
+                     - 如果 row_headers 是 ["0-50m²", "50-100m²"]，column_headers 是 ["Sets"] -> select: ['dim_area', 'trade_sets'] (不要加 date_code)。
+
+
+         Example1:
+             slide_params:{{
+                 "caption": "2020-2022 Supply and Transaction Unit Statistics in Beijing's Liangxiang",
+                 "row_headers": ["0-20m²", "20-40m²", "40-60m²", "60-80m²", "80-100m²", "100-120m²", "120-140m²", "140-160m²", "160-180m²", "180-200m²", "200-220m²", "220-240m²", "240-260m²", "260-280m²", "280-300m²", "≥300m²", "总计"],
+                 "column_headers": ["Supply Count (Sets)", "Deliv. Count (Sets)"]
+             }}
+         Response:
+             {{
+                 "connection": {{
+                             "table": "beijing_new_house",
+                             }},
+                 "select_columns": ["supply_sets", "trade_sets", "dim_area"],
+                 "filters": {{
+                             "city": "Beijing",
+                             "block": "Liangxiang",
+                             "start_date": "2020-01-01",
+                             "end_date": "2022-12-31",
+                             }},
+             }}
+
+         Example2:
+             slide_params:{{
+                 "caption": "Beijing Miyun District Guoxiang Mansion Monthly Average Price Trend Analysis, Jan-Jun 2024,
+                 "row_headers": ["2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06"],
+                 "column_headers": ["month", "avg_unit_price"]
+             }}
+         Response:
+             {{
+                 "connection": {{
+                             "table": "beijing_new_house",
+                             }},
+                 "select_columns": ["date_code", "dim_unit_price"],
+                 "filters": {{
+                             "city": "Beijing",
+                             "block": "Miyun District",
+                             "start_date": "2024-01-01",
+                             "end_date": "2024-6-30",
+                             }},
+             }}
+
+
+         Example3:
+             slide_params:{{
+                 "caption": "2021-2023 Shenzhen Nanshan CBD Resale House Total Area Segment Distribution Statistics",
+                 "row_headers": ["0-20m²", "20-40m²", "40-60m²", "60-80m²", "80-100m²", "100-120m²", "120-140m²", "140-160m²", "160-180m²", "180-200m²", "≥200m²"],
+                 "column_headers": ["area_range", "Area Rng Stats"]
+             }}
+         Response:
+                 {{
+                     "connection": {{
+                                 "table": "shenzhen_resale_house",
+                                 }},
+                     "select_columns": ["dim_area", "trade_sets"],
+                     "filters": {{
+                                 "city": "Shenzhen",
+                                 "block": "Nanshan CBD",
+                                 "start_date": "2021-01-01",
+                                 "end_date": "2023-12-31",
+                                 }},
+                 }}
+
+         Example4:
+             slide_params:{{
+                 "caption": "Beijing Beiqijia Resale House: 2020-2024 Annual Average Price Trend Analysis"
+                 "row_headers": ["2020", "2021", "2022", "2023", "2024"],,
+                 "column_headers":  ["year", "Unit Area Price"]
+             }}
+         Response:
+               {{
+                     "connection": {{
+                                 "table": "beijing_resale_house",
+                                 }},
+                     "select_columns": ["date_code","dim_unit_price"],
+                     "filters": {{
+                                 "city": "Beijing",
+                                 "block": "Beiqijia",
+                                 "start_date": "2020-01-01",
+                                 "end_date": "2024-12-31",
+                                 }},
+                 }}
+
+         Example5:
+             slide_params:{{
+                 "caption": "Beijing Liangxiang: Historical Supply and Transaction Area Statistics (2020-2024)"
+                 "row_headers": ["2020", "2021", "2022", "2023", "2024"],
+                 "column_headers":  ["Ttl Salable Area", "Ttl Trade Area"]
+             }}
+             Response:
+                   {{
+                         "connection": {{
+                                     "table": "beijing_new_house",
+                                     }},
+                         "select_columns": ["date_code","supply_sets","trade_sets","dim_area"],
+                         "filters": {{
+                                     "city": "Beijing",
+                                     "block": "Liangxiang",
+                                     "start_date": "2020-01-01",
+                                     "end_date": "2024-12-31",
+                                     }},
+                     }}
+
+         Example6:
+             slide_params:{{
+                 "caption": "Guangzhou Wangcheng Area Resale House: Overview of Historical Delivery Metrics (2020-2024)"
+                 "row_headers": ["2020", "2021", "2022", "2023", "2024"],,
+                 "column_headers":  ["Deliv. Units (Sets)", "/m² Sales", "Actual Area"]
+             }}
+             Response:
+                   {{
+                         "connection": {{
+                                     "table": "guangzhou_resale_house",
+                                     }},
+                         "select_columns": ["dim_area","dim_unit_price","date_code","trade_sets"],
+                         "filters": {{
+                                     "city": "Guangzhou",
+                                     "block": "Wangcheng Area",
+                                     "start_date": "2020-01-01",
+                                     "end_date": "2024-12-31",
+                                     }},
+                     }}
+
+         Example7:
+             slide_params:{{
+                 "caption": "Shenzhen Dalang Fashion Creative Zone Resale House: 2020-2024 Annual Average Price Trend Analysis"
+                 "row_headers": ["2020", "2021", "2022", "2023", "2024"],
+                 "column_headers":  ["/m² Sales"]
+             }}
+             Response:
+                   {{
+                         "connection": {{
+                                     "table": "shenzhen_resale_house",
+                                     }},
+                         "select_columns": ["date_code","dim_unit_price"],
+                         "filters": {{
+                                     "city": "Shenzhen",
+                                     "block": "Dalang Fashion Creative Zone",
+                                     "start_date": "2020-01-01",
+                                     "end_date": "2024-12-31",
+                                     }},
+                     }}
+
+        Example7:
+             slide_params:{{
+                 "caption": "2020-2022 Beijing Liangxiang Total Price Segment Distribution Statistics"
+                 "row_headers": ["0.0-0.75 M", "0.75-1.5 M", "1.5-2.25 M", "2.25-3.0 M", "3.0-3.75 M", "3.75-4.5 M", "4.5-5.25 M", "5.25-6.0 M", "6.0-6.75 M", "6.75-7.5 M", "≥7.5 M"],
+                 "column_headers":  ["Price Class Stats"]
+             }}
+             Response:
+                   {{
+                         "connection": {{
+                                     "table": "beijing_new_house",
+                                     }},
+                         "select_columns": ["dim_price","trade_sets"],
+                         "filters": {{
+                                     "city": "Beijing",
+                                     "block": "Liangxiang",
+                                     "start_date": "2020-01-01",
+                                     "end_date": "2022-12-31",
+                                     }},
+                     }}
+
+            Do not output the thinking process or internal monologue. Do not use <think> tags.

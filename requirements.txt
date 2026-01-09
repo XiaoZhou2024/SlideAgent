@@ -1,0 +1,15 @@
+langchain==0.3.27
+langchain_core==0.3.76
+langchain_openai==0.3.33
+langgraph==0.6.7
+numpy==2.3.3
+openai==1.109.1
+pandas==2.3.2
+pdf2image==1.17.0
+pptxtopdf==0.0.2
+python-dotenv==1.1.1
+python_pptx==1.0.2
+pywin32==311
+PyYAML==6.0.3
+SQLAlchemy==2.0.43
+tqdm==4.67.1

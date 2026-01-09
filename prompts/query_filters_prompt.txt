@@ -1,0 +1,121 @@
+根据用户的问题，从中提取以下信息并生成一个严格的JSON对象。字段包括：
+city: 城市名称（字符串，如果未提及则为default）
+block: 区块或区名称（字符串，如果未提及则为default）
+project: 项目名称（字符串，如果未提及则为default）
+start_date: 开始日期（字符串，格式'YYYY-MM-DD'，如果未提及则为default）
+end_date: 结束日期（字符串，格式'YYYY-MM-DD'，如果未提及则为default）
+area_range_size: 面积范围大小（数字或字符串，如"20"，如果未提及则为default）
+price_range_size: 价格范围大小（数字或字符串，如"1"，如果未提及则为default）
+
+【关键分类规则】
+BLOCK的特征：
+- 是行政或地理区域（如：Huairou District、Changping Urban Area、Nanshan CBD、Lianhuashan）
+- 通常是"区"、"区域"、"板块"、"商圈"的名称
+- 一般在city之后、project之前
+- 不包含具体房产开发商或楼盘名称
+
+PROJECT的特征：
+- 是具体的房地产项目、楼盘或开发商名称（如：Silicon Valley One、Poly Leading Seaview、Guantang Mansion）
+- 通常包含开发商名称或项目的特定名称
+- 最具体的商业实体
+- 一般在block之后
+
+【提取优先级】
+优先识别：城市 → 行政区/地理区块 → 具体项目名
+
+【处理规则】
+1. 如果有明确的项目名（带开发商或楼盘名），单独提取为project
+2. 剩余的地理区域描述部分作为block
+3. 连接词"in"、"at"、"的"等通常标志block和project的分界
+4. 如果不确定，优先将较小的地理单位作为block，具体项目名作为project
+
+要求：
+1.只输出有效的JSON对象，不要包含任何解释、额外文本或代码块标记。
+2.所有日期必须使用'YYYY-MM-DD'格式。
+3.如果用户问题中某个字段未明确提及，使用default填充该字段。
+4.JSON键必须精确匹配上述字段名，使用双引号包围值。
+
+Examples:
+Query: Based on this slide, please generate a slide for the Beijing Huairou District sector from 2021 to 2023.
+Response:
+{{
+"city": "Beijing",
+"block": "Huairou District",
+"project": "default",
+"start_date": "2021-01-01",
+"end_date": "2023-12-31",
+"area_range_size": "default",
+"price_range_size": "default"
+}}
+
+Query: Based on this slide, please generate a slide for the Guangzhou Development East Area sector from 2020 to 2022, set the area segment to 25m², and set the price segment to 0.75 million yuan.
+Response:
+{{
+"city": "Guangzhou",
+"block": "Development East Area",
+"project": "default",
+"start_date": "2020-01-01",
+"end_date": "2022-12-31",
+"area_range_size": "25",
+"price_range_size": "0.75"
+}}
+
+Query: Please create a slide about the Shenzhen Nanshan CBD sector. Make sure to use a price segment of 1 million yuan.
+Response:
+{{
+"city": "Shenzhen",
+"block": "Nanshan CBD",
+"project": "default",
+"start_date": "default",
+"end_date": "default",
+"area_range_size": "default",
+"price_range_size": "1"
+}}
+
+Query: Based on this template, please generate the slide for Beijing Beiqijia Silicon Valley One.
+Response:
+{{
+"city": "Beijing",
+"block": "Beiqijia",
+"project": "Silicon Valley One",
+"start_date": "default",
+"end_date": "default",
+"area_range_size": "default",
+"price_range_size": "default"
+}}
+
+Query:Based on this slide, please generate the slide for 2024, from Jan to Jun in Guangzhou Lianhuashan Poly Leading Seaview.
+Response:
+{{
+"city": "Guangzhou",
+"block": "Lianhuashan",
+"project": "Poly Leading Seaview",
+"start_date": "2024-1-01",
+"end_date": "2024-6-30",
+"area_range_size": "default",
+"price_range_size": "default"
+}}
+
+Query:Based on this slide, please generate the slide for 2024, from Jan to Jun in Beijing Changping Urban Area - Nanshao Fujian Construction Guantang Mansion.
+Response:
+{{
+"city": "Beijing",
+"block": "Changping Urban Area - Nanshao",
+"project": "Fujian Construction Guantang Mansion",
+"start_date": "2024-1-01",
+"end_date": "2024-6-30",
+"area_range_size": "default",
+"price_range_size": "default"
+}}
+
+Query:Based on this slide, please generate the slide for 2024, from Jan to Jun in Beijing Nanzhongzhou Daxing Development Yishengyue.
+Response:
+{{
+"city": "Beijing",
+"block": "Nanzhongzhou",
+"project": "Daxing Development Yishengyue",
+"start_date": "2024-1-01",
+"end_date": "2024-6-30",
+"area_range_size": "default",
+"price_range_size": "default"
+}}

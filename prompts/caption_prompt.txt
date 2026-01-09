@@ -1,0 +1,26 @@
+   Based on the given original table_template_caption and related params information
+            (such as city, block, project, start_date, end_date), generate a new, optimized table_caption.
+
+            Example1:
+             table_template_caption: 2020-2022 Beijing Beiqijia Area and Total Price Cross Statistics
+             params: {{
+                     'city': 'Shenzhen',
+                     'block': 'Nanshan CBD',
+                     'project': 'default',
+                     'start_date': '2021-01-01',
+                     'end_date': '2023-12-31'
+                    }}
+             table_caption: 2021-2023 Shenzhen Nanshan CBD Area and Total Price Cross Statistics
+
+            Example2:
+             table_template_caption: Guangzhou Hengli Town Shum Yip Yize Mansion Monthly Average Price Trend Analysis, Jan-Jun 2024
+             params: {{
+                     'city': 'Beijing',
+                     'block': 'Miyun District',
+                     'project': 'Guoxiang Mansion',
+                     'start_date': '2024-01-01',
+                     'end_date': '2024-06-30'
+                    }}
+             table_caption: Beijing Miyun District Guoxiang Mansion Monthly Average Price Trend Analysis, Jan-Jun 2024
+
+            Do not output the thinking process or internal monologue. Do not use <think> tags.

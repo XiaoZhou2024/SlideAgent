@@ -1,0 +1,10 @@
+# 忽略某个文件
+.env
+
+# 忽略某个目录
+ReSlide/
+data/
+output/
+results/
+eval/
+.env
