@@ -7,7 +7,9 @@ Unlike traditional template-filling methods, SlideAgent can handle diverse, user
 
 We also introduce **DynaSlide**, a large-scale benchmark containing **20,036** real-world instruction–execution triples to facilitate research in this domain.
 
-<img src="./assets/pic_1.png" width="800">
+<div align="center">
+<img src="./assets/pic_1.png" width="70%">
+</div>
 
 ## 🏗️ Architecture
 
